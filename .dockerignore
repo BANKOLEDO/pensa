@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+**/node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Builds (frontend is rebuilt inside the image)
+frontend/dist/
+dist/
+
+# Hardhat / contracts (not needed at runtime)
+artifacts/
+cache/
+contracts/
+test/
+scripts/
+hardhat.config.js
+*.tsbuildinfo
+
+# Secrets — never baked into the image
+.env
+.env.local
+.env.*.local
+
+# VCS
+.git/
+.gitignore
+
+# Editor / OS
+.vscode/
+.idea/
+*.log
+.DS_Store
+Thumbs.db
+branding/

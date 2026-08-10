@@ -1,0 +1,7 @@
+allowBuilds:
+  esbuild: set this to true or false
+# pnpm 10 blocks postinstall scripts by default. esbuild needs its install
+# script for the native binary used by Vite. Allowed here so `pnpm build`
+# works inside the Docker image and on a fresh checkout.
+onlyBuiltDependencies:
+  - esbuild
