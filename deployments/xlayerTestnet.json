@@ -1,0 +1,10 @@
+{
+  "chainId": 1952,
+  "network": "xlayerTestnet",
+  "factory": "0x8C7723E91C677847c4FF1a50CE126fC30bd63681",
+  "vaultImplementation": "0xEb9904B13e8067f310ED10e5329845F31300dF5A",
+  "strategy": "0xDd097d7644ecf8774BCe299a2ea0f3df9072c8D4",
+  "feeRecipient": "0xCbf5c87c79Bc1d823f049e1Ed7707bc38Eb7D939",
+  "deployedAt": "2026-08-09T19:14:44.259Z",
+  "blockNumber": 37844048
+}
