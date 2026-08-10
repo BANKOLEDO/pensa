@@ -51,6 +51,7 @@ async function main() {
   const summary = {
     chainId: Number(networkId),
     network,
+    rpc: hre.network.config.url,
     factory: factoryAddress,
     vaultImplementation: await vaultImpl.getAddress(),
     strategy: strategyAddress,

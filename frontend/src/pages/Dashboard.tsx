@@ -4,7 +4,7 @@ import { Logo } from "../components/Logo";
 import { Icon } from "../components/Icon";
 import Donut from "../components/Donut";
 import { EnvBadge } from "../components/Header";
-import { adjustAllocation, applyStrategy, createVault, fetchSystemConfig, fetchVault } from "../lib/api";
+import { adjustAllocation, applyStrategy, createVault, fetchSystemConfig, fetchVault, setActiveNetwork } from "../lib/api";
 import { useWallet } from "../lib/wallet";
 import { fmtBps, shortAddr, tokenLabel, usd } from "../lib/format";
 import type { StrategyRecommendation, SystemConfig, Vault } from "../lib/types";
@@ -33,7 +33,7 @@ const SIDE_NAV: { key: TabKey; label: string; icon: "chart" | "layers" | "spark"
 ];
 
 export default function Dashboard() {
-  const { wallet, disconnect } = useWallet();
+  const { wallet, network, disconnect } = useWallet();
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [vault, setVault] = useState<Vault | null>(null);
   const [strategy, setStrategy] = useState<StrategyRecommendation | null>(null);
@@ -67,9 +67,10 @@ export default function Dashboard() {
       if (toastTimer.current) window.clearTimeout(toastTimer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [network]);
 
   useEffect(() => {
+    setActiveNetwork(network);
     if (!wallet) {
       setVault(null);
       setStrategy(null);
@@ -100,7 +101,7 @@ export default function Dashboard() {
     return () => {
       cancelled = true;
     };
-  }, [wallet]);
+  }, [wallet, network]);
 
   const handleDisconnect = () => {
     disconnect();

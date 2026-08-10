@@ -9,6 +9,7 @@ only a free bot token from @BotFather. Start it with:
 Commands:
     /start      welcome + quick start
     /connect    how to connect a wallet / create a vault
+    /network    switch testnet | mainnet
     /balance    current pension balance + projected value
     /strategy   current AI strategy
     /adjust     change the auto-allocation percentage
@@ -42,7 +43,7 @@ logging.basicConfig(level=logging.INFO)
 log = logging.getLogger("pensa.bot")
 
 TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
-BASE_URL = os.getenv("TELEGRAM_BASE_URL", "http://127.0.0.1:8000")
+BASE_URL = os.getenv("TELEGRAM_BASE_URL", f"http://127.0.0.1:{os.getenv('PORT', '7860')}")
 
 SUPPORTED_ASSETS = ["USDC", "USDT", "TBILL", "USDY", "AAVE-USDC"]
 
@@ -51,10 +52,16 @@ def _usd(value) -> str:
     return f"${float(value):,.2f}"
 
 
-async def _fetch_vault(user: str) -> dict | None:
+def _net_query(context) -> str:
+    """Build the ?network= query the backend uses to pick testnet vs mainnet."""
+    net = context.user_data.get("pensa_network")
+    return f"?network={net}" if net in ("testnet", "mainnet") else ""
+
+
+async def _fetch_vault(user: str, network_query: str = "") -> dict | None:
     try:
         import requests
-        resp = requests.get(f"{BASE_URL}/vaults/{user}", timeout=10)
+        resp = requests.get(f"{BASE_URL}/vaults/{user}{network_query}", timeout=10)
         if resp.status_code == 200:
             return resp.json()
     except Exception as exc:
@@ -106,7 +113,7 @@ async def create(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         import requests
         resp = requests.post(
-            f"{BASE_URL}/vaults",
+            f"{BASE_URL}/vaults{_net_query(context)}",
             json={"user": user, "allocationPercent": 300, "riskTolerance": 50, "preferredAssets": ["USDC", "TBILL"]},
             timeout=10,
         )
@@ -130,7 +137,7 @@ async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not user:
         await update.message.reply_text("Set an address with `/set 0xYOUR_ADDRESS` or pass one: `/balance 0x...`")
         return
-    vault = await _fetch_vault(user)
+    vault = await _fetch_vault(user, _net_query(context))
     if not vault:
         await update.message.reply_text("No vault found. Create one with `/create 0xYOUR_ADDRESS`.")
         return
@@ -165,7 +172,7 @@ async def strategy(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         import requests
         resp = requests.post(
-            f"{BASE_URL}/strategies/recommend",
+            f"{BASE_URL}/strategies/recommend{_net_query(context)}",
             json={"user": user, "age": 30, "monthly_income": 2000, "riskTolerance": 50, "retirement_age": 65},
             timeout=30,
         )
@@ -209,7 +216,7 @@ async def adjust(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     try:
         import requests
-        resp = requests.patch(f"{BASE_URL}/vaults/{user}/allocation", json={"allocationPercent": pct * 100}, timeout=10)
+        resp = requests.patch(f"{BASE_URL}/vaults/{user}/allocation{_net_query(context)}", json={"allocationPercent": pct * 100}, timeout=10)
         if resp.status_code in (200, 201):
             await update.message.reply_text(f"Allocation updated to *{pct}%* of every payout.")
         else:
@@ -232,7 +239,7 @@ async def pay(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         import requests
         resp = requests.post(
-            f"{BASE_URL}/payments/auto",
+            f"{BASE_URL}/payments/auto{_net_query(context)}",
             json={"user": user, "asset": "USDC", "amount": amount},
             timeout=10,
         )
@@ -258,12 +265,29 @@ async def set_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await update.message.reply_text(f"Address saved: `{context.args[0]}`", parse_mode="Markdown")
 
 
+async def set_network(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        net = context.user_data.get("pensa_network", "default (env)")
+        await update.message.reply_text(
+            f"Current network: *{net}*\n\nUsage: `/network testnet` or `/network mainnet`",
+            parse_mode="Markdown",
+        )
+        return
+    net = context.args[0].lower()
+    if net not in ("testnet", "mainnet"):
+        await update.message.reply_text("Network must be `testnet` or `mainnet`.")
+        return
+    context.user_data["pensa_network"] = net
+    await update.message.reply_text(f"Switched to *X Layer {net}*.", parse_mode="Markdown")
+
+
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "/start — welcome\n"
         "/connect — wallet setup\n"
         "/create 0x... — create a vault\n"
         "/set 0x... — remember your address\n"
+        "/network testnet|mainnet — pick the chain\n"
         "/balance — pension balance\n"
         "/strategy — AI allocation\n"
         "/adjust 5 — set allocation %\n"
@@ -287,6 +311,7 @@ def main() -> None:
     app.add_handler(CommandHandler("connect", connect))
     app.add_handler(CommandHandler("create", create))
     app.add_handler(CommandHandler("set", set_address))
+    app.add_handler(CommandHandler("network", set_network))
     app.add_handler(CommandHandler("balance", balance))
     app.add_handler(CommandHandler("strategy", strategy))
     app.add_handler(CommandHandler("adjust", adjust))

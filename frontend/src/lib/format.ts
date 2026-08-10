@@ -1,4 +1,8 @@
-export const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8000";
+// In production the SPA is served by the same FastAPI process, so an empty
+// API_URL means same-origin. In dev (vite on :5173) default to the local
+// backend; overridable with VITE_API_URL at build time.
+export const API_URL =
+  (import.meta.env.VITE_API_URL as string) || (import.meta.env.DEV ? "http://localhost:8000" : "");
 
 /** Human short + long address formatting. */
 export const shortAddr = (a: string, n = 6): string =>

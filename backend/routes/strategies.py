@@ -5,8 +5,9 @@ import hashlib
 import json
 import sys
 from pathlib import Path
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from ..models import ApplyStrategyRequest, RecommendRequest
 from ..utils.xlayer_client import CLIENT
@@ -17,13 +18,24 @@ sys.path.insert(0, str(ROOT / "ai-agent"))
 router = APIRouter(prefix="/strategies", tags=["strategies"])
 
 
-def _run_optimization(body: RecommendRequest) -> dict:
+def _agent_network(network: Optional[str]) -> str:
+    """Map the ?network= label to the ai-agent's per-network deployments key."""
+    if CLIENT.is_simulation:
+        return "dev"
+    if network == "testnet":
+        return "xlayerTestnet"
+    if network == "mainnet":
+        return "xlayer"
+    return "xlayer"
+
+
+def _run_optimization(body: RecommendRequest, network: Optional[str] = None) -> dict:
     from agent import PENSAgent
     from portfolio_optimizer import expected_apr
     from risk_analyzer import compute_risk_score
     from market_data import get_market_snapshot, get_volatility
 
-    agent = PENSAgent("dev" if CLIENT.is_simulation else "xlayer")
+    agent = PENSAgent(_agent_network(network))
     profile = agent.analyze_user_profile({
         "address": body.user,
         "age": body.age,
@@ -56,17 +68,18 @@ def _hash_allocations(allocations: list) -> str:
 
 
 @router.post("/recommend")
-def recommend(body: RecommendRequest):
-    return _run_optimization(body)
+def recommend(body: RecommendRequest, network: Optional[str] = Query(None, description="testnet | mainnet")):
+    return _run_optimization(body, network)
 
 
 @router.get("/{user}")
-def current_strategy(user: str):
-    vault = CLIENT.get_vault(user)
+def current_strategy(user: str, network: Optional[str] = Query(None, description="testnet | mainnet")):
+    vault = CLIENT.get_vault(user, network)
     if vault is None:
         raise HTTPException(status_code=404, detail="No vault found for this address")
     return {
         "user": user,
+        "network": network,
         "strategyHash": vault.get("strategyHash"),
         "lastUpdate": vault.get("lastStrategyUpdate"),
         "simulated": vault.get("simulated", False),
@@ -74,15 +87,15 @@ def current_strategy(user: str):
 
 
 @router.post("/apply")
-def apply_strategy(body: ApplyStrategyRequest):
+def apply_strategy(body: ApplyStrategyRequest, network: Optional[str] = Query(None, description="testnet | mainnet")):
     """Compute the AI recommendation and store its hash on the vault."""
     recommend_body = RecommendRequest(
         user=body.user,
         riskTolerance=body.riskTolerance if body.riskTolerance is not None else 50,
     )
-    result = _run_optimization(recommend_body)
+    result = _run_optimization(recommend_body, network)
     strategy_hash = _hash_allocations(result["allocations"])
-    outcome = CLIENT.set_strategy(body.user, strategy_hash)
+    outcome = CLIENT.set_strategy(body.user, strategy_hash, network)
     if outcome is None:
         raise HTTPException(status_code=404, detail="No vault found for this address")
     return {**result, "strategyHash": strategy_hash, "applied": outcome}

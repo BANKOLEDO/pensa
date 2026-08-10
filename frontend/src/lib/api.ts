@@ -1,12 +1,24 @@
 import { API_URL } from "./format";
 import { DEMO_CONFIG, DEMO_STRATEGY, DEMO_VAULTS, DEMO_USER } from "../data/mock";
+import type { NetworkId } from "./chains";
 import type { PaymentResult, StrategyRecommendation, SystemConfig, Vault } from "./types";
 
 /** True when the backend answered; false -> UI falls back to demo data. */
 export const backendLive = { value: false };
 
+/** Network the user selected (wallet.tsx setNetwork); mirrors the backend ?network= query. */
+let activeNetwork: NetworkId = "mainnet";
+export function setActiveNetwork(n: NetworkId) {
+  activeNetwork = n;
+}
+export function getActiveNetwork(): NetworkId {
+  return activeNetwork;
+}
+
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const sep = path.includes("?") ? "&" : "?";
+  const url = `${API_URL}${path}${sep}network=${activeNetwork}`;
+  const res = await fetch(url, {
     headers: { "Content-Type": "application/json" },
     ...init,
   });

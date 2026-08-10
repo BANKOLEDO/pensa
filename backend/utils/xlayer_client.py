@@ -21,6 +21,13 @@ sys.path.insert(0, str(ROOT / "ai-agent"))
 
 log = logging.getLogger("pensa.xlayer")
 
+# Canonical bridged USDC on X Layer (mainnet 196 / testnet 1952). The testnet
+# usually has a mintable demo USDC in deployments/xlayerTestnet.json instead.
+CANONICAL_USDC = {
+    196: "0x74b7f16337b8972027f6196a17a631ac6de26f22",
+    1952: "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+}
+
 # --- embedded factory ABI (subset used by the backend) ----------------------
 FACTORY_ABI = [
     {"inputs": [{"name": "u", "type": "address"}], "name": "getUserVault", "outputs": [{"name": "", "type": "address"}], "stateMutability": "view", "type": "function"},
@@ -50,9 +57,29 @@ class XLayerClient:
         self.settings = get_settings()
 
     # ---- wiring ------------------------------------------------------------
-    def _web3(self):
+    def _network_context(self, network: Optional[str] = None):
+        """Resolve (rpc, chain_id, deployments, simulated) for a network label.
+
+        `network` is one of "testnet" | "mainnet" (from the frontend selector)
+        or None to use the env-configured default. In dev/simulation, always
+        fall back to the in-memory store regardless of the label.
+        """
+        if self.settings.is_simulation:
+            return self.settings.effective_rpc, self.settings.effective_chain_id, self.settings.load_deployments(), True
+        if network == "testnet":
+            rpc, chain_id, net = self.settings.x_layer_testnet_rpc, 1952, "xlayerTestnet"
+        elif network == "mainnet":
+            rpc, chain_id, net = self.settings.x_layer_rpc, 196, "xlayer"
+        else:
+            return self.settings.effective_rpc, self.settings.effective_chain_id, self.settings.load_deployments(), False
+        path = ROOT / "deployments" / f"{net}.json"
+        deployments = json.loads(path.read_text()) if path.exists() else {}
+        return rpc, chain_id, deployments, False
+
+    def _web3(self, network: Optional[str] = None):
         from web3 import Web3
-        w3 = Web3(Web3.HTTPProvider(self.settings.effective_rpc, request_kwargs={"timeout": 15}))
+        rpc, _, _, _ = self._network_context(network)
+        w3 = Web3(Web3.HTTPProvider(rpc, request_kwargs={"timeout": 15}))
         try:
             from web3.middleware import ExtraDataToPOAMiddleware
             w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
@@ -60,9 +87,9 @@ class XLayerClient:
             pass
         return w3
 
-    def _factory(self, w3=None):
-        w3 = w3 or self._web3()
-        deployments = self.settings.load_deployments()
+    def _factory(self, w3=None, network: Optional[str] = None):
+        w3 = w3 or self._web3(network)
+        _, _, deployments, _ = self._network_context(network)
         addr = deployments.get("factory")
         if not addr:
             return None
@@ -73,51 +100,52 @@ class XLayerClient:
         return self.settings.is_simulation
 
     # ---- public API --------------------------------------------------------
-    def system_config(self) -> dict:
-        d = self.settings.load_deployments()
+    def system_config(self, network: Optional[str] = None) -> dict:
+        rpc, chain_id, d, simulated = self._network_context(network)
         return {
             "env": self.settings.app_env,
-            "chainId": self.settings.effective_chain_id,
-            "rpc": self.settings.effective_rpc,
-            "simulated": self.is_simulation,
+            "network": network or ("testnet" if chain_id == 1952 else "mainnet"),
+            "chainId": chain_id,
+            "rpc": rpc,
+            "simulated": simulated or self.is_simulation,
             "factoryAddress": d.get("factory", ""),
             "strategyAddress": d.get("strategy", ""),
             "usdc": d.get("usdc", ""),
             "usdcLabel": "USDC",
         }
 
-    def list_vaults(self) -> List[dict]:
+    def list_vaults(self, network: Optional[str] = None) -> List[dict]:
         if self.is_simulation:
             from .. import store
             return store.STORE.list_vaults()
-        factory = self._factory()
+        factory = self._factory(network=network)
         if not factory:
             return []
-        w3 = self._web3()
+        w3 = self._web3(network)
         try:
             vaults = factory.functions.getVaults().call()
-            return [self.vault_snapshot(v) for v in vaults]
+            return [self.vault_snapshot(v, network) for v in vaults]
         except Exception as exc:
             log.warning("list_vaults failed: %s", exc)
             return []
 
-    def get_vault(self, user: str) -> Optional[dict]:
+    def get_vault(self, user: str, network: Optional[str] = None) -> Optional[dict]:
         if self.is_simulation:
             from .. import store
             return store.STORE.get_vault(user)
-        factory = self._factory()
+        factory = self._factory(network=network)
         if not factory:
             return None
         try:
             vault = factory.functions.getUserVault(user).call()
             if vault and int(vault, 16) != 0:
-                return self.vault_snapshot(vault)
+                return self.vault_snapshot(vault, network)
         except Exception as exc:
             log.warning("get_vault failed: %s", exc)
         return None
 
-    def vault_snapshot(self, vault: str) -> dict:
-        w3 = self._web3()
+    def vault_snapshot(self, vault: str, network: Optional[str] = None) -> dict:
+        w3 = self._web3(network)
         v = w3.eth.contract(address=vault, abi=VAULT_ABI)
         # Testnet RPCs are slow (~3s per call); fetch the 8 reads concurrently
         # instead of sequentially (~25s → ~4s).
@@ -189,12 +217,14 @@ class XLayerClient:
         _cache[low] = d
         return d
 
-    def create_vault(self, user: str, allocation_percent: int, risk_tolerance: int, preferred: List[str]) -> dict:
+    def create_vault(self, user: str, allocation_percent: int, risk_tolerance: int, preferred: List[str], network: Optional[str] = None) -> dict:
         if self.is_simulation:
             from .. import store
             return store.STORE.create_vault(user, allocation_percent, risk_tolerance, preferred)
-        factory = self._factory()
-        w3 = self._web3()
+        factory = self._factory(network=network)
+        if not factory:
+            return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
+        w3 = self._web3(network)
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
         tx = factory.functions.createVault(allocation_percent, preferred, risk_tolerance).build_transaction({
             "from": agent.address, "gas": 400000, "gasPrice": w3.eth.gas_price,
@@ -205,12 +235,14 @@ class XLayerClient:
         w3.eth.wait_for_transaction_receipt(h)
         return {"user": user, "status": "submitted", "txHash": h.hex()}
 
-    def update_allocation(self, user: str, percent: int) -> Optional[dict]:
+    def update_allocation(self, user: str, percent: int, network: Optional[str] = None) -> Optional[dict]:
         if self.is_simulation:
             from .. import store
             return store.STORE.update_allocation(user, percent)
-        factory = self._factory()
-        w3 = self._web3()
+        factory = self._factory(network=network)
+        if not factory:
+            return None
+        w3 = self._web3(network)
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
         tx = factory.functions.updateAllocation(percent).build_transaction({
             "from": agent.address, "gas": 120000, "gasPrice": w3.eth.gas_price,
@@ -221,28 +253,32 @@ class XLayerClient:
         w3.eth.wait_for_transaction_receipt(h)
         return {"user": user, "allocationPercent": percent, "txHash": h.hex()}
 
-    def forward_payment(self, user: str, asset: str, amount: int) -> dict:
+    def forward_payment(self, user: str, asset: str, amount: int, network: Optional[str] = None) -> dict:
         """Route an incoming payment; allocationPercent of it enters the vault.
 
-        `amount` is expressed in human units (e.g. 1000 = $1,000 USD); it is
-        scaled to the asset's decimals before calling the contract. When the
-        signing agent is also the payer (in-app simulate flow), an ERC-20
-        approval is issued automatically if the allowance is insufficient.
+        `amount` is expressed in human units (e.g. 1000 = $1,000 USD); `asset`
+        may be a token symbol ("USDC"/"USDT") or an address; symbols are
+        resolved to the per-network demo/canonical USDC. It is scaled to the
+        asset's decimals before calling the contract. When the signing agent is
+        also the payer (in-app simulate flow), an ERC-20 approval is issued
+        automatically if the allowance is insufficient.
         """
         if self.is_simulation:
             from .. import store
             return store.STORE.forward_payment(user, asset, amount)
-        factory = self._factory()
-        w3 = self._web3()
-        factory_addr = factory.address
-        decimals = self._asset_decimals(w3, asset)
+        factory = self._factory(network=network)
+        if not factory:
+            return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
+        w3 = self._web3(network)
+        asset_addr = self._resolve_asset(asset, network)
+        decimals = self._asset_decimals(w3, asset_addr)
         raw = int(round(amount * (10 ** decimals)))
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
 
         # Ensure the agent can pull funds: approve the factory when needed.
-        self._ensure_allowance(w3, asset, factory_addr, agent, raw)
+        self._ensure_allowance(w3, asset_addr, factory.address, agent, raw)
 
-        tx = factory.functions.forwardPayment(user, asset, raw).build_transaction({
+        tx = factory.functions.forwardPayment(user, asset_addr, raw).build_transaction({
             "from": agent.address, "gas": 250000, "gasPrice": w3.eth.gas_price,
             "nonce": w3.eth.get_transaction_count(agent.address),
         })
@@ -250,6 +286,23 @@ class XLayerClient:
         h = w3.eth.send_raw_transaction(signed.raw_transaction)
         w3.eth.wait_for_transaction_receipt(h)
         return {"user": user, "asset": asset, "status": "submitted", "txHash": h.hex()}
+
+    def _resolve_asset(self, asset: str, network: Optional[str] = None) -> str:
+        """Map a token symbol to its user address for the active chain.
+
+        Addresses pass through; "USDC" resolves to the mintable demo token
+        written by scripts/fund.js (testnet) or the canonical bridged USDC.
+        """
+        if not isinstance(asset, str) or asset.startswith("0x"):
+            return asset
+        symbol = asset.strip().upper()
+        if symbol != "USDC":
+            return asset
+        _, chain_id, deployments, _ = self._network_context(network)
+        demo = deployments.get("usdc")
+        if demo:
+            return demo
+        return CANONICAL_USDC.get(chain_id, CANONICAL_USDC[196])
 
     def _ensure_allowance(self, w3, asset: str, spender: str, account, amount: int) -> None:
         """Approve `spender` to move `amount` of `asset` from `account` if needed."""
@@ -269,14 +322,16 @@ class XLayerClient:
         h = w3.eth.send_raw_transaction(signed.raw_transaction)
         w3.eth.wait_for_transaction_receipt(h)
 
-    def record_returns(self, user: str, amount: int) -> dict:
+    def record_returns(self, user: str, amount: int, network: Optional[str] = None) -> dict:
         if self.is_simulation:
             from .. import store
             return store.STORE.record_returns(user, amount)
-        factory = self._factory()
-        w3 = self._web3()
+        factory = self._factory(network=network)
+        if not factory:
+            return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
+        w3 = self._web3(network)
         # Returns are booked in the vault's first held asset's decimals.
-        vault = self.get_vault(user)
+        vault = self.get_vault(user, network)
         assets = vault.get("holdings", {}) if vault else {}
         decimals = self._asset_decimals(w3, next(iter(assets), user)) if assets else 6
         raw = int(round(amount * (10 ** decimals))) if isinstance(amount, float) else amount
@@ -290,12 +345,14 @@ class XLayerClient:
         w3.eth.wait_for_transaction_receipt(h)
         return {"user": user, "returns": amount, "txHash": h.hex()}
 
-    def set_strategy(self, user: str, strategy_hash: str) -> dict:
+    def set_strategy(self, user: str, strategy_hash: str, network: Optional[str] = None) -> dict:
         if self.is_simulation:
             from .. import store
             return store.STORE.set_strategy(user, strategy_hash)
-        factory = self._factory()
-        w3 = self._web3()
+        factory = self._factory(network=network)
+        if not factory:
+            return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
+        w3 = self._web3(network)
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
         tx = factory.functions.updateStrategy(strategy_hash).build_transaction({
             "from": agent.address, "gas": 150000, "gasPrice": w3.eth.gas_price,
