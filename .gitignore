@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+venv/
+.venv/
+__pycache__/
+*.pyc
+
+# Builds
+dist/
+artifacts/
+cache/
+frontend/dist/
+
+# Secrets — never commit these
+.env
+.env.local
+.env.*.local
+
+# Deployments (contains addresses, not secrets — keep if you want)
+deployments/last-run.json
+
+# OS
+.DS_Store
+Thumbs.db
