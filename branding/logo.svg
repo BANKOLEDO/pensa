@@ -1,0 +1,28 @@
+<svg width="1400" height="340" viewBox="0 0 1400 340" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="lg" x1="0" y1="0" x2="760" y2="340" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FBBF24"/>
+      <stop offset="0.45" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </linearGradient>
+  </defs>
+
+  <!-- mark -->
+  <g transform="translate(20 6) scale(0.72)">
+    <path d="M256 56 L428 108 V252 C428 350 358 426 256 460 C154 426 84 350 84 252 V108 Z" fill="url(#lg)"/>
+    <path d="M246 300 h20 v-66 h-20 z" fill="#0F172A"/>
+    <path d="M256 234 L256 198" stroke="#0F172A" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="196" cy="196" r="44" fill="#1E3A5F"/>
+    <circle cx="316" cy="196" r="44" fill="#1E3A5F"/>
+    <circle cx="256" cy="160" r="46" fill="#1E3A5F"/>
+    <circle cx="256" cy="206" r="40" fill="#0F172A"/>
+    <path d="M316 176 C332 164 352 162 362 172 C366 182 356 194 342 196 C330 198 318 192 316 176 Z" fill="#06B6D4"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="430" y="196" font-family="'Sora','Segoe UI',system-ui,sans-serif" font-size="128" font-weight="700" fill="#F8FAFC" letter-spacing="4">PENSA</text>
+  <text x="434" y="266" font-family="'DM Sans','Segoe UI',system-ui,sans-serif" font-size="27" font-weight="600" fill="#94A3B8" letter-spacing="2.5">AI-MANAGED MICRO-PENSION FOR GIG WORKERS</text>
+
+  <rect x="434" y="300" width="150" height="3" fill="#F59E0B"/>
+  <circle cx="590" cy="301.5" r="6" fill="#06B6D4"/>
+</svg>

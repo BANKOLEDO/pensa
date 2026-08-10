@@ -1,0 +1,54 @@
+<svg width="1500" height="500" viewBox="0 0 1500 500" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bannerBg" x1="0" y1="0" x2="1500" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0F172A"/>
+      <stop offset="0.55" stop-color="#16213E"/>
+      <stop offset="1" stop-color="#1E3A5F"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="700" y2="500" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FBBF24"/>
+      <stop offset="0.5" stop-color="#F59E0B"/>
+      <stop offset="1" stop-color="#D97706"/>
+    </linearGradient>
+    <radialGradient id="glowGold" cx="0.18" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#F59E0B" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#F59E0B" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowTeal" cx="0.9" cy="0.25" r="0.55">
+      <stop offset="0" stop-color="#06B6D4" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#06B6D4" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M60 0H0V60" fill="none" stroke="#F8FAFC" stroke-opacity="0.05" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1500" height="500" fill="url(#bannerBg)"/>
+  <rect width="1500" height="500" fill="url(#grid)"/>
+  <rect width="1500" height="500" fill="url(#glowGold)"/>
+  <rect width="1500" height="500" fill="url(#glowTeal)"/>
+
+  <g transform="translate(90 40) scale(0.8)">
+    <path d="M256 56 L428 108 V252 C428 350 358 426 256 460 C154 426 84 350 84 252 V108 Z" fill="url(#gold)"/>
+    <path d="M246 300 h20 v-66 h-20 z" fill="#0F172A"/>
+    <path d="M256 234 L256 198" stroke="#0F172A" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="196" cy="196" r="44" fill="#1E3A5F"/>
+    <circle cx="316" cy="196" r="44" fill="#1E3A5F"/>
+    <circle cx="256" cy="160" r="46" fill="#1E3A5F"/>
+    <circle cx="256" cy="206" r="40" fill="#0F172A"/>
+    <path d="M316 176 C332 164 352 162 362 172 C366 182 356 194 342 196 C330 198 318 192 316 176 Z" fill="#06B6D4"/>
+  </g>
+
+  <text x="480" y="210" font-family="'Space Grotesk','Segoe UI',sans-serif" font-size="120" font-weight="700" fill="#F8FAFC" letter-spacing="4">PENSA</text>
+  <text x="484" y="272" font-family="'Inter','Segoe UI',sans-serif" font-size="32" fill="#94A3B8" letter-spacing="2">AI-managed pensions for the 1.5B gig economy</text>
+
+  <rect x="484" y="310" width="170" height="4" fill="#F59E0B"/>
+  <circle cx="660" cy="312" r="7" fill="#06B6D4"/>
+
+  <g transform="translate(1030 300)">
+    <rect width="360" height="120" rx="18" fill="#0F172A" fill-opacity="0.65" stroke="#F8FAFC" stroke-opacity="0.12"/>
+    <text x="24" y="38" font-family="'Inter','Segoe UI',sans-serif" font-size="20" fill="#F59E0B" font-weight="600" letter-spacing="1">3% AUTO-ALLOCATION</text>
+    <text x="24" y="72" font-family="'Inter','Segoe UI',sans-serif" font-size="20" fill="#F8FAFC">RWA + DeFi + Stable</text>
+    <text x="24" y="100" font-family="'Inter','Segoe UI',sans-serif" font-size="20" fill="#94A3B8">Powered by AI on X Layer</text>
+  </g>
+</svg>
