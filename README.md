@@ -125,8 +125,8 @@ pnpm seed:mainnet
 Everything ships in a single Docker image (`Dockerfile`): the built frontend SPA
 is served **same-origin** by the FastAPI backend (which embeds the AI agent) and
 the Telegram bot runs in the same container. One URL is enough for the whole
-product — no CORS, no cross-origin RPC. It listens on `$PORT` (default `7860`,
-the Hugging Face Spaces port).
+product — no CORS, no cross-origin RPC. It listens on `$PORT` (injected by the
+platform; default `7860`).
 
 ```bash
 docker build -t pensa . && docker run -d -p 7860:7860 \
@@ -134,8 +134,9 @@ docker build -t pensa . && docker run -d -p 7860:7860 \
   -e TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" pensa
 ```
 
-Set these in the target platform (HF Spaces → Settings → Variables and Secrets;
-never bake real keys into the image — `.env` is gitignore'd and not copied):
+Set these as environment variables in the target platform (Render → the service's
+**Environment** tab; never bake real keys into the image — `.env` is gitignore'd
+and not copied):
 
 | Variable | Notes |
 |----------|-------|
@@ -146,11 +147,19 @@ never bake real keys into the image — `.env` is gitignore'd and not copied):
 | `SERVE_SPA` | `0` to disable SPA serving if you mount the UI elsewhere |
 
 **Zero-cost hosting (recommended for judging):**
-- **Hugging Face Spaces** — new Space → `Docker` SDK → point at this repo
-  (or paste the Dockerfile). Free CPU tier, no credit card, persistent public
-  URL like `https://<you>-pensa.hf.space`. Port auto-detected via `$PORT`.
-- **Alternative**: Railway / Render / Fly.io can run the same Dockerfile
-  unchanged.
+- **Render free web service** — Deploy → New → Web Service → connect to the
+  GitHub repo (Dockerfile auto-detected). Free tier: 1 web service, 750
+  compute hours/month, no credit card. Inject `PORT`, `APP_ENV`, and the
+  private keys as environment variables, and it gets a public URL like
+  `https://<you>-pensa.onrender.com`.
+  Note the free instance sleeps after **~15 min** of inactivity (cold start
+  30–60s), so pair it with a free [UptimeRobot](https://uptimerobot.com)
+  monitor hitting `/health` every 5 min to keep it (and the Telegram bot) awake
+  during judging.
+- **Hugging Face Spaces** — new Space → `Docker` SDK is now **paid** (PRO
+  required as of 2026); free accounts only get Static Spaces. Use Render unless
+  you already have an HF PRO plan.
+- **Alternative**: Railway / Fly.io can run the same Dockerfile unchanged.
 
 ### Judge demo script (external judges, anywhere in the world)
 
