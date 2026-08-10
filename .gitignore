@@ -10,6 +10,7 @@ dist/
 artifacts/
 cache/
 frontend/dist/
+*.tsbuildinfo
 
 # Secrets — never commit these
 .env
