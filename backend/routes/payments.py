@@ -1,0 +1,75 @@
+"""Payment routes — auto-allocation of incoming gig payouts + x402 rail."""
+from __future__ import annotations
+
+from fastapi import APIRouter, HTTPException, Request
+
+from ..models import ForwardPaymentRequest, X402PaymentRequest
+from ..config import get_settings
+from ..utils.x402_handler import (
+    EXPECT_HEADER, SEND_HEADER, SIGNATURE_HEADER, build_meta, build_payment_url,
+    parse_payment, verify_payment,
+)
+from ..utils.xlayer_client import CLIENT
+
+router = APIRouter(prefix="/payments", tags=["payments"])
+
+# Canonical USDC on X Layer (mainnet: 0x74b7f163...; testnet chain 1952: 0xDec90b781...). See scripts/_tokens.js.
+USDC_ON_XLAYER = {
+    196: "0x74b7f16337b8972027f6196a17a631ac6de26f22",
+    1952: "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3",
+}
+
+
+def _usdc_address() -> str:
+    return USDC_ON_XLAYER.get(get_settings().effective_chain_id, USDC_ON_XLAYER[196])
+
+
+@router.get("/x402/meta")
+def x402_meta(request: Request):
+    """Discovery endpoint an x402 client calls before paying."""
+    base = str(request.base_url).rstrip("/")
+    return build_meta(_usdc_address(), base, get_settings().effective_chain_id)
+
+
+@router.post("/x402")
+def receive_x402(body: X402PaymentRequest, request: Request):
+    """x402 webhook — verify the signed payment intent, then auto-allocate."""
+    intent = parse_payment(body.model_dump())
+
+    if not intent["recipient"]:
+        raise HTTPException(status_code=400, detail="recipient is required")
+
+    if body.signature:
+        signer = verify_payment(intent, body.signature)
+        if signer is None:
+            raise HTTPException(status_code=401, detail="Invalid payment signature")
+        payer = signer
+    else:
+        payer = intent["recipient"]
+
+    # The 3% (allocationPercent) split is handled by the protocol layer.
+    captured = CLIENT.forward_payment(payer, intent["token"], intent["amount"])
+    if captured is None:
+        raise HTTPException(status_code=404, detail="No vault for this user — create one first")
+
+    return {
+        "status": "accepted",
+        "payer": payer,
+        "payment": intent,
+        "captured": captured,
+        "paymentUrl": build_payment_url(intent["recipient"], intent["amount"], intent["token"], get_settings().effective_chain_id),
+    }
+
+
+@router.post("/auto")
+def auto_allocate(body: ForwardPaymentRequest):
+    """Simulate/execute an incoming payout and route allocationPercent to the vault."""
+    captured = CLIENT.forward_payment(body.user, body.asset, body.amount)
+    if captured is None:
+        raise HTTPException(status_code=404, detail="No vault found for this address")
+    return {
+        "paymentAmount": body.amount,
+        "asset": body.asset,
+        "allocation": captured,
+        "message": f"{body.amount} {body.asset} received; allocation routed to pension vault",
+    }
