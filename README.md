@@ -165,13 +165,17 @@ and not copied):
 
 1. Open the **one public URL** — the landing page loads from the same server.
 2. On the onboarding page pick **Testnet** (chain 1952) and connect a wallet
-   (OKX/MetaMask). The backend auto-creates a vault for that address and stores
-   an AI strategy hash on-chain. Explain the 3% auto-allocation.
+   (OKX/MetaMask). The vault is created **by signing with their own wallet** —
+   the wallet owns it on-chain (grab a little testnet OKB at the
+   [X Layer faucet](https://www.okx.com/xlayer/faucet/xlayerfaucet) first, ~90k
+   gas). The AI strategy hash is stored on their vault the same way. Explain the
+   3% auto-allocation.
 3. Open the **Dashboard**: live vault holdings (mintable demo USDC from
    `fund:testnet`), risk score, expected APR, and Holdings/Strategy tabs update
    in real time. 3 seeded demo vaults are already on-chain.
 4. Live payout routes:
-   - `POST {URL}/payments/auto` `{"user":"0x…","asset":"USDC","amount":1000}` →
+   - **Add demo payout** button on the dashboard (or
+     `POST {URL}/payments/auto` `{"user":"0x…","asset":"USDC","amount":1000}`) →
      allocates 3% into the vault (real testnet tx; agent signs).
    - `GET {URL}/payments/x402/meta` → x402 payment rail discovery.
 5. AI on demand: `POST {URL}/strategies/recommend` returns live market yields

@@ -69,7 +69,8 @@ def _hash_allocations(allocations: list) -> str:
 
 @router.post("/recommend")
 def recommend(body: RecommendRequest, network: Optional[str] = Query(None, description="testnet | mainnet")):
-    return _run_optimization(body, network)
+    result = _run_optimization(body, network)
+    return {**result, "strategyHash": _hash_allocations(result["allocations"])}
 
 
 @router.get("/{user}")

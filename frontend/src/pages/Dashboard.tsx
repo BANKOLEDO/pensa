@@ -4,7 +4,8 @@ import { Logo } from "../components/Logo";
 import { Icon } from "../components/Icon";
 import Donut from "../components/Donut";
 import { EnvBadge } from "../components/Header";
-import { adjustAllocation, applyStrategy, createVault, fetchSystemConfig, fetchVault, setActiveNetwork } from "../lib/api";
+import { adjustAllocation, createVault, fetchSystemConfig, fetchVault, recommendStrategy, setActiveNetwork, simulatePayout } from "../lib/api";
+import { isLiveConfig, signCreateVault, signUpdateAllocation, signUpdateStrategy } from "../lib/pensa";
 import { useWallet } from "../lib/wallet";
 import { fmtBps, shortAddr, tokenLabel, usd } from "../lib/format";
 import type { StrategyRecommendation, SystemConfig, Vault } from "../lib/types";
@@ -79,19 +80,43 @@ export default function Dashboard() {
     }
     let cancelled = false;
     (async () => {
+      const c = await fetchSystemConfig();
+      const live = isLiveConfig(c);
       let v = await fetchVault(wallet);
       if (cancelled) return;
       if (!v) {
-        const c = await fetchSystemConfig();
-        if (cancelled) return;
         const preferred = c.usdc ? [c.usdc] : ["USDC", "TBILL", "USDY"];
-        v = await createVault(wallet, 300, 50, preferred);
-        if (cancelled) return;
+        if (live) {
+          try {
+            showToast("ok", "Creating your vault — confirm in your wallet…");
+            await signCreateVault(c.factoryAddress, 300, preferred, 50, (hash) => showToast("ok", `Vault tx sent · ${shortAddr(hash, 12)}`));
+          } catch (e) {
+            if (cancelled) return;
+            showToast("err", `Vault creation declined: ${String(e).slice(0, 140)}`);
+            return;
+          }
+          v = await fetchVault(wallet);
+          if (cancelled || !v) return;
+        } else {
+          v = await createVault(wallet, 300, 50, preferred);
+          if (cancelled) return;
+        }
       }
       setVault(v);
       setAllocBps(v.allocationPercent);
-      const s = await applyStrategy(wallet, v.riskTolerance);
+
+      const s = await recommendStrategy(wallet, { risk_tolerance: v.riskTolerance });
       if (cancelled) return;
+      if (live && s.strategyHash && s.strategyHash !== v.strategyHash) {
+        try {
+          await signUpdateStrategy(c.factoryAddress, s.strategyHash, (hash) => showToast("ok", `Strategy tx sent · ${shortAddr(hash, 12)}`));
+        } catch {
+          /* signature declined — keep the recommendation local */
+        }
+        const refreshed = await fetchVault(wallet);
+        if (cancelled) return;
+        if (refreshed) setVault(refreshed);
+      }
       setStrategy(s);
       setFeed([
         { icon: "wallet", t: "Vault connected", d: `${shortAddr(v.vault)} · ${fmtBps(v.allocationPercent)} allocation` },
@@ -112,12 +137,22 @@ export default function Dashboard() {
     if (!wallet) return;
     setBusy(true);
     try {
-      const v = await adjustAllocation(wallet, allocBps);
+      const live = isLiveConfig(config);
+      let v: Vault;
+      if (live) {
+        showToast("ok", "Set allocation — confirm in your wallet…");
+        await signUpdateAllocation(config!.factoryAddress, allocBps, (h) => showToast("ok", `Allocation tx sent · ${shortAddr(h, 12)}`));
+        const updated = await fetchVault(wallet);
+        if (!updated) throw new Error("vault not found after update");
+        v = updated;
+      } else {
+        v = await adjustAllocation(wallet, allocBps);
+      }
       showToast("ok", `Allocation set to ${fmtBps(allocBps)} of every payout`);
       setVault(v);
       setFeed((f) => [{ icon: "refresh", t: "Allocation changed", d: `Now ${fmtBps(allocBps)}` }, ...f]);
     } catch (e) {
-      showToast("err", `Update failed: ${String(e)}`);
+      showToast("err", `Update failed: ${String(e).slice(0, 160)}`);
     } finally {
       setBusy(false);
     }
@@ -149,12 +184,35 @@ export default function Dashboard() {
     if (!wallet) return;
     setBusy(true);
     try {
-      const s = await applyStrategy(wallet, vault?.riskTolerance ?? 50);
+      const live = isLiveConfig(config);
+      const s = await recommendStrategy(wallet, { risk_tolerance: vault?.riskTolerance ?? 50 });
+      if (live && s.strategyHash) {
+        showToast("ok", "Apply strategy — confirm in your wallet…");
+        await signUpdateStrategy(config!.factoryAddress, s.strategyHash, (h) => showToast("ok", `Strategy tx sent · ${shortAddr(h, 12)}`));
+      }
       setStrategy(s);
       showToast("ok", "Strategy re-optimized");
       await refreshVault(wallet);
     } catch (e) {
-      showToast("err", `Strategy failed: ${String(e)}`);
+      showToast("err", `Strategy failed: ${String(e).slice(0, 160)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleAddFunds = async () => {
+    if (!wallet) return;
+    setBusy(true);
+    try {
+      const r = await simulatePayout(wallet, 1000);
+      showToast("ok", "$1,000 payout received");
+      await refreshVault(wallet);
+      setFeed((f) => [
+        { icon: "bolt", t: "Payout received", d: `$1,000 → ${usd(r.allocation.captured)} into the vault` },
+        ...f,
+      ]);
+    } catch (e) {
+      showToast("err", `Payout failed: ${String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -205,6 +263,16 @@ export default function Dashboard() {
             <div className="text-xs muted">{c.sub}</div>
           </div>
         ))}
+      </div>
+
+      <div className="row gap-3" style={{ alignItems: "center", marginTop: 16 }}>
+        <button className="btn btn-accent" onClick={handleAddFunds} disabled={busy}>
+          <Icon name="bolt" size={15} />
+          Add demo payout ($1,000)
+        </button>
+        <p className="text-sm muted" style={{ margin: 0 }}>
+          Simulates a gig payout — {fmtBps(allocBps)} is routed into your vault on-chain.
+        </p>
       </div>
 
       <div className="row gap-6" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
