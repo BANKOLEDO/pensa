@@ -6,7 +6,7 @@ import Donut from "../components/Donut";
 import { EnvBadge } from "../components/Header";
 import { adjustAllocation, applyStrategy, createVault, fetchSystemConfig, fetchVault } from "../lib/api";
 import { useWallet } from "../lib/wallet";
-import { fmtBps, shortAddr, usd } from "../lib/format";
+import { fmtBps, shortAddr, tokenLabel, usd } from "../lib/format";
 import type { StrategyRecommendation, SystemConfig, Vault } from "../lib/types";
 
 type Toast = { kind: "ok" | "err"; msg: string } | null;
@@ -81,7 +81,10 @@ export default function Dashboard() {
       let v = await fetchVault(wallet);
       if (cancelled) return;
       if (!v) {
-        v = await createVault(wallet, 300, 50, ["USDC", "TBILL", "USDY"]);
+        const c = await fetchSystemConfig();
+        if (cancelled) return;
+        const preferred = c.usdc ? [c.usdc] : ["USDC", "TBILL", "USDY"];
+        v = await createVault(wallet, 300, 50, preferred);
         if (cancelled) return;
       }
       setVault(v);
@@ -161,11 +164,11 @@ export default function Dashboard() {
   const donutSegments = useMemo(
     () =>
       holdings.map(([label, value], i) => ({
-        label,
+        label: tokenLabel(label, config?.usdc),
         value,
         color: Object.values(CAT_COLORS)[i % 3] as string,
       })),
-    [holdings]
+    [holdings, config]
   );
 
   const riskPct = strategy?.risk.score ?? vault?.riskTolerance ?? 50;
@@ -222,7 +225,7 @@ export default function Dashboard() {
                     >
                       <span className="row gap-3" style={{ gap: 10 }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: donutSegments[i]?.color }} />
-                        <span className="text-sm">{label}</span>
+                        <span className="text-sm">{tokenLabel(label, config?.usdc)}</span>
                       </span>
                       <span className="mono">{usd(value)}</span>
                     </div>
@@ -349,7 +352,7 @@ export default function Dashboard() {
                   <div key={label} className="row space-between" style={{ borderBottom: "1px solid var(--border-100)", paddingBlock: 14 }}>
                     <span className="row gap-3" style={{ gap: 10 }}>
                       <span style={{ width: 8, height: 8, borderRadius: "50%", background: donutSegments[i]?.color }} />
-                      <span className="text-sm">{label}</span>
+                      <span className="text-sm">{tokenLabel(label, config?.usdc)}</span>
                     </span>
                     <span className="mono-sm" style={{ width: 60, textAlign: "right" }}>{pct.toFixed(1)}%</span>
                     <span className="mono" style={{ width: 100, textAlign: "right" }}>{usd(value)}</span>

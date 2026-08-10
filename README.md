@@ -11,6 +11,12 @@ Frontend (React + Vite)  ──►  Backend (FastAPI)  ──►  PENSA contract
    Wallet (MetaMask/OKX)    AI Agent (LLM + rules)    Vaults/Factory/Strategy
 ```
 
+The **AI agent** is a core component of PENSA, not a bolt-on. It analyzes each
+worker's profile (age, income, risk tolerance), reads live market yields, and
+produces the portfolio the vault's strategy hash points at. The backend invokes
+it for every recommendation, and `pnpm agent` runs it as a standalone rebalance
+loop / CLI. See `ai-agent/`.
+
 ## Repository layout
 
 ```
@@ -68,7 +74,12 @@ cd frontend && pnpm dev
 ```
 Open http://localhost:5173, click **Open the dashboard**, connect your wallet, and explore all five tabs (Overview, Holdings, Strategy, Activity, Settings). With `APP_ENV=dev` the UI works fully without a chain.
 
-AI agent (optional): `pnpm agent` (or `python ai-agent/agent.py`).
+Run the AI agent (core component) in standalone mode:
+```bash
+pnpm agent                 # or: python ai-agent/agent.py
+```
+It works offline too: without a HUGGINGFACE_API_KEY it falls back to a rules
+engine, so the strategy pipeline is exercisable end-to-end with no external calls.
 
 ## 4. Smart contracts
 
@@ -83,11 +94,21 @@ pnpm test       # 21 hardhat contract tests
 1. Fund a wallet with testnet **OKB** from the X Layer faucet
    (https://web3.okx.com/xlayer/faucet/xlayerfaucet) and put its key in `.env`.
 2. Set `APP_ENV=staging` so the backend targets the testnet RPC.
-3. Deploy and seed:
+3. Deploy, fund, and seed:
 ```bash
 pnpm deploy:testnet   # writes deployments/xlayerTestnet.json
+pnpm fund:testnet     # deploys a mintable demo USDC + funds demo wallets (testnet OKB faucet first)
 pnpm seed:testnet     # demo vaults + AI strategy + simulated $1,000 payouts
 ```
+
+> **About demo USDC.** Circle's testnet faucet does not list X Layer, so real
+> testnet USDC is not freely mintable there. `fund:testnet` deploys a mintable
+> `MockERC20` demo USDC and stores its address in `deployments/xlayerTestnet.json`
+> (`usdc`). The backend and seed scripts automatically prefer it over the
+> canonical bridged USDC, so vault holdings, the payment sim, and the dashboard
+> all show live on-chain numbers without real capital. Paste the deployer
+> address into https://www.okx.com/xlayer/faucet first — it needs ~0.1 OKB for
+> gas to run the funding txs (it also tops up the two derived demo wallets).
 4. Restart the backend — it auto-reads the deployed factory address.
 5. In the frontend, pick **Testnet** on the onboarding page, connect, and your
    wallet is switched to the testnet chain.

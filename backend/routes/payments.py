@@ -21,7 +21,19 @@ USDC_ON_XLAYER = {
 
 
 def _usdc_address() -> str:
-    return USDC_ON_XLAYER.get(get_settings().effective_chain_id, USDC_ON_XLAYER[196])
+    """Resolve the USDC address for the current env.
+
+    On staging/prod, prefer the `usdc` override written by scripts/fund.js
+    (a mintable demo USDC) so payment sims work without Circle's faucet,
+    which does not support X Layer testnet. Falls back to the canonical escrow.
+    """
+    settings = get_settings()
+    if not settings.is_simulation:
+        deployments = settings.load_deployments()
+        demo = deployments.get("usdc")
+        if demo:
+            return demo
+    return USDC_ON_XLAYER.get(settings.effective_chain_id, USDC_ON_XLAYER[196])
 
 
 @router.get("/x402/meta")

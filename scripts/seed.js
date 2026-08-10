@@ -48,6 +48,8 @@ async function main() {
   }
 
   // --- Token ---------------------------------------------------------------
+  // Prefer the mintable demo USDC that fund.js deployed (if present), else the
+  // canonical bridged USDC from _tokens.js.
   let token;
   let tokenAddress;
   if (network === "localhost" || network === "hardhat") {
@@ -57,10 +59,10 @@ async function main() {
     tokenAddress = await token.getAddress();
     console.log(`MockERC20 (PUSD) -> ${tokenAddress}`);
   } else {
-    tokenAddress = USDC_ADDRESSES[network];
+    tokenAddress = d.usdc || USDC_ADDRESSES[network];
     if (!tokenAddress) throw new Error(`No USDC address configured for network "${network}". Add it in scripts/_tokens.js`);
     token = await ethers.getContractAt("MockERC20", tokenAddress); // interface-compatible subset used below
-    console.log(`USDC -> ${tokenAddress}`);
+    console.log(`USDC${d.usdc ? " (demo)" : ""} -> ${tokenAddress}`);
   }
 
   // --- Vaults ---------------------------------------------------------------
@@ -75,8 +77,19 @@ async function main() {
     if (live) {
       const okb = await hre.ethers.provider.getBalance(u.address);
       if (okb === 0n) {
-        console.log(`Skipping ${u.address} — no OKB for gas (send testnet OKB to exercise multi-user seed)`);
-        continue;
+        // Auto-top-up a small gas allowance from the deployer so demos run
+        // without manually funding every derived wallet.
+        const [deployer] = await hre.ethers.getSigners();
+        const deployerBal = await hre.ethers.provider.getBalance(deployer.address);
+        const GAS = ethers.parseEther("0.08");
+        if (deployerBal >= GAS) {
+          const tx = await deployer.sendTransaction({ to: u.address, value: GAS });
+          await tx.wait();
+          console.log(`Auto-funded ${ethers.formatEther(GAS)} OKB gas for ${u.address}`);
+        } else {
+          console.log(`Skipping ${u.address} — no OKB for gas and deployer can't fund it`);
+          continue;
+        }
       }
     }
     const tx = await factory.connect(u).createVault(

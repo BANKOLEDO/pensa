@@ -24,3 +24,21 @@ export const categoryDot: Record<string, string> = {
   defi: "bg-teal-400",
   stable: "bg-emerald-400",
 };
+
+/**
+ * Map an on-chain asset address to a friendly symbol. On-chain vault holdings
+ * are keyed by token address; show "USDC" instead of a raw 0x… hash when we
+ * recognize it (e.g. the demo/mintable USDC from scripts/fund.js).
+ */
+export const tokenLabel = (addr: string, usdcAddr?: string): string => {
+  if (!addr) return "USDC";
+  const known: Record<string, string> = {
+    // X Layer testnet (mainnet / demo USDC from fund.js)
+    "0x74b7f16337b8972027f6196a17a631ac6de26f22": "USDC",
+    "0xDec90b78111Ba2fc6FC6d84d8B9ec159A2d4b9B3": "USDC",
+  };
+  if (usdcAddr) known[usdcAddr.toLowerCase()] = "USDC";
+  const lower = addr.toLowerCase();
+  if (known[lower]) return known[lower];
+  return shortAddr(addr);
+};

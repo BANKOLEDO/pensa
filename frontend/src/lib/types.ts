@@ -5,6 +5,8 @@ export interface SystemConfig {
   simulated: boolean;
   factoryAddress: string;
   strategyAddress: string;
+  usdc?: string;
+  usdcLabel?: string;
 }
 
 export interface Holding {

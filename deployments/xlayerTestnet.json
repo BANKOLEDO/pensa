@@ -6,5 +6,6 @@
   "strategy": "0xDd097d7644ecf8774BCe299a2ea0f3df9072c8D4",
   "feeRecipient": "0xCbf5c87c79Bc1d823f049e1Ed7707bc38Eb7D939",
   "deployedAt": "2026-08-09T19:14:44.259Z",
-  "blockNumber": 37844048
+  "blockNumber": 37844048,
+  "usdc": "0x7411a136e1f85b762f53c81D8095E8A33942e5c5"
 }

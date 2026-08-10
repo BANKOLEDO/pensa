@@ -39,6 +39,7 @@ VAULT_ABI = [
     {"inputs": [], "name": "totalDeposited", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "totalReturns", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "currentStrategyHash", "outputs": [{"name": "", "type": "bytes32"}], "stateMutability": "view", "type": "function"},
+    {"inputs": [], "name": "lastStrategyUpdate", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "getTotalValue", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
     {"inputs": [], "name": "getHoldings", "outputs": [{"name": "", "type": "address[]"}, {"name": "", "type": "uint256[]"}], "stateMutability": "view", "type": "function"},
 ]
@@ -81,6 +82,8 @@ class XLayerClient:
             "simulated": self.is_simulation,
             "factoryAddress": d.get("factory", ""),
             "strategyAddress": d.get("strategy", ""),
+            "usdc": d.get("usdc", ""),
+            "usdcLabel": "USDC",
         }
 
     def list_vaults(self) -> List[dict]:
@@ -126,6 +129,7 @@ class XLayerClient:
             v.functions.allocationPercent(),
             v.functions.riskTolerance(),
             v.functions.currentStrategyHash(),
+            v.functions.lastStrategyUpdate(),
             v.functions.getHoldings(),
         ]
         with ThreadPoolExecutor(max_workers=8) as ex:
@@ -138,22 +142,52 @@ class XLayerClient:
         alloc = results[4]
         risk = results[5]
         strategy = results[6].hex()
-        assets, amounts = results[7]
-        holdings = {a: int(am) for a, am in zip(assets, amounts)}
-        growth = (returns / deposited * 100.0) if deposited else 0.0
+        last_update = int(results[7])
+        assets, amounts = results[8]
+        holdings_raw = {a: int(am) for a, am in zip(assets, amounts)}
+
+        # Normalize raw token units → human USD. USDC and the demo USDC are 6
+        # decimals; read decimals() per asset (fallback 6) so the dashboard
+        # shows $3.00, not $3,000,000.
+        decimals = {a: self._asset_decimals(w3, a) for a in holdings_raw}
+        holdings = {a: round(am / 10 ** decimals[a], 6) for a, am in holdings_raw.items()}
+        scale = min(decimals.values()) if decimals else 6
+        total_norm = round(total / 10 ** scale, 6)
+        deposited_norm = round(deposited / 10 ** scale, 6)
+        returns_norm = round(returns / 10 ** scale, 6)
+        growth = (returns_norm / deposited_norm * 100.0) if deposited_norm else 0.0
+
         return {
             "user": user,
             "vault": vault,
             "allocationPercent": alloc,
             "riskTolerance": risk,
             "holdings": holdings,
-            "totalValue": int(total),
-            "totalDeposited": int(deposited),
-            "totalReturns": int(returns),
+            "totalValue": total_norm,
+            "totalDeposited": deposited_norm,
+            "totalReturns": returns_norm,
             "growthPct": round(growth, 2),
             "strategyHash": "0x" + strategy,
+            "lastStrategyUpdate": last_update,
             "simulated": False,
         }
+
+    @staticmethod
+    def _asset_decimals(w3, asset: str, _cache: dict = {}) -> int:
+        """Cache decimals() per token address, falling back to 6 (USDC-like)."""
+        low = asset.lower()
+        if low in _cache:
+            return _cache[low]
+        try:
+            tok = w3.eth.contract(
+                address=asset,
+                abi=[{"inputs": [], "name": "decimals", "outputs": [{"name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}],
+            )
+            d = int(tok.functions.decimals().call())
+        except Exception:
+            d = 6
+        _cache[low] = d
+        return d
 
     def create_vault(self, user: str, allocation_percent: int, risk_tolerance: int, preferred: List[str]) -> dict:
         if self.is_simulation:
@@ -188,14 +222,27 @@ class XLayerClient:
         return {"user": user, "allocationPercent": percent, "txHash": h.hex()}
 
     def forward_payment(self, user: str, asset: str, amount: int) -> dict:
-        """Route an incoming payment; allocationPercent of it enters the vault."""
+        """Route an incoming payment; allocationPercent of it enters the vault.
+
+        `amount` is expressed in human units (e.g. 1000 = $1,000 USD); it is
+        scaled to the asset's decimals before calling the contract. When the
+        signing agent is also the payer (in-app simulate flow), an ERC-20
+        approval is issued automatically if the allowance is insufficient.
+        """
         if self.is_simulation:
             from .. import store
             return store.STORE.forward_payment(user, asset, amount)
         factory = self._factory()
         w3 = self._web3()
+        factory_addr = factory.address
+        decimals = self._asset_decimals(w3, asset)
+        raw = int(round(amount * (10 ** decimals)))
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
-        tx = factory.functions.forwardPayment(user, asset, amount).build_transaction({
+
+        # Ensure the agent can pull funds: approve the factory when needed.
+        self._ensure_allowance(w3, asset, factory_addr, agent, raw)
+
+        tx = factory.functions.forwardPayment(user, asset, raw).build_transaction({
             "from": agent.address, "gas": 250000, "gasPrice": w3.eth.gas_price,
             "nonce": w3.eth.get_transaction_count(agent.address),
         })
@@ -204,14 +251,37 @@ class XLayerClient:
         w3.eth.wait_for_transaction_receipt(h)
         return {"user": user, "asset": asset, "status": "submitted", "txHash": h.hex()}
 
+    def _ensure_allowance(self, w3, asset: str, spender: str, account, amount: int) -> None:
+        """Approve `spender` to move `amount` of `asset` from `account` if needed."""
+        approve_abi = [
+            {"inputs": [{"name": "s", "type": "address"}, {"name": "a", "type": "uint256"}], "name": "approve", "outputs": [{"name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"},
+            {"inputs": [{"name": "o", "type": "address"}, {"name": "s", "type": "address"}], "name": "allowance", "outputs": [{"name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"},
+        ]
+        tok = w3.eth.contract(address=asset, abi=approve_abi)
+        current = tok.functions.allowance(account.address, spender).call()
+        if current >= amount:
+            return
+        tx = tok.functions.approve(spender, amount).build_transaction({
+            "from": account.address, "gas": 120000, "gasPrice": w3.eth.gas_price,
+            "nonce": w3.eth.get_transaction_count(account.address),
+        })
+        signed = account.sign_transaction(tx)
+        h = w3.eth.send_raw_transaction(signed.raw_transaction)
+        w3.eth.wait_for_transaction_receipt(h)
+
     def record_returns(self, user: str, amount: int) -> dict:
         if self.is_simulation:
             from .. import store
             return store.STORE.record_returns(user, amount)
         factory = self._factory()
         w3 = self._web3()
+        # Returns are booked in the vault's first held asset's decimals.
+        vault = self.get_vault(user)
+        assets = vault.get("holdings", {}) if vault else {}
+        decimals = self._asset_decimals(w3, next(iter(assets), user)) if assets else 6
+        raw = int(round(amount * (10 ** decimals))) if isinstance(amount, float) else amount
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
-        tx = factory.functions.recordReturns(user, amount).build_transaction({
+        tx = factory.functions.recordReturns(user, raw).build_transaction({
             "from": agent.address, "gas": 120000, "gasPrice": w3.eth.gas_price,
             "nonce": w3.eth.get_transaction_count(agent.address),
         })
