@@ -1,0 +1,175 @@
+<svg width="800" height="560" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- flat, no gradients -->
+  <rect width="800" height="560" rx="18" fill="#0f1520"/>
+  <!-- dot grid -->
+  <g fill="#ffffff" fill-opacity="0.05">
+    <circle cx="20" cy="40" r="1"/><circle cx="44" cy="40" r="1"/><circle cx="68" cy="40" r="1"/>
+    <circle cx="92" cy="40" r="1"/><circle cx="116" cy="40" r="1"/><circle cx="140" cy="40" r="1"/>
+    <circle cx="164" cy="40" r="1"/><circle cx="188" cy="40" r="1"/><circle cx="212" cy="40" r="1"/>
+    <circle cx="236" cy="40" r="1"/><circle cx="260" cy="40" r="1"/><circle cx="284" cy="40" r="1"/>
+    <circle cx="308" cy="40" r="1"/><circle cx="332" cy="40" r="1"/><circle cx="356" cy="40" r="1"/>
+    <circle cx="380" cy="40" r="1"/><circle cx="404" cy="40" r="1"/><circle cx="428" cy="40" r="1"/>
+    <circle cx="452" cy="40" r="1"/><circle cx="476" cy="40" r="1"/><circle cx="500" cy="40" r="1"/>
+    <circle cx="524" cy="40" r="1"/><circle cx="548" cy="40" r="1"/><circle cx="572" cy="40" r="1"/>
+    <circle cx="596" cy="40" r="1"/><circle cx="620" cy="40" r="1"/><circle cx="644" cy="40" r="1"/>
+    <circle cx="668" cy="40" r="1"/><circle cx="692" cy="40" r="1"/><circle cx="716" cy="40" r="1"/>
+    <circle cx="740" cy="40" r="1"/><circle cx="764" cy="40" r="1"/><circle cx="788" cy="40" r="1"/>
+    <circle cx="24" cy="260" r="1"/><circle cx="24" cy="284" r="1"/><circle cx="24" cy="308" r="1"/>
+    <circle cx="24" cy="332" r="1"/><circle cx="24" cy="356" r="1"/><circle cx="24" cy="380" r="1"/>
+    <circle cx="24" cy="404" r="1"/><circle cx="24" cy="428" r="1"/><circle cx="24" cy="452" r="1"/>
+    <circle cx="24" cy="476" r="1"/><circle cx="24" cy="500" r="1"/><circle cx="24" cy="524" r="1"/>
+    <circle cx="776" cy="260" r="1"/><circle cx="776" cy="284" r="1"/><circle cx="776" cy="308" r="1"/>
+    <circle cx="776" cy="332" r="1"/><circle cx="776" cy="356" r="1"/><circle cx="776" cy="380" r="1"/>
+    <circle cx="776" cy="404" r="1"/><circle cx="776" cy="428" r="1"/><circle cx="776" cy="452" r="1"/>
+    <circle cx="776" cy="476" r="1"/><circle cx="776" cy="500" r="1"/><circle cx="776" cy="524" r="1"/>
+  </g>
+  <rect x="1" y="1" width="798" height="558" rx="18" fill="none" stroke="#32405a"/>
+
+  <!-- corner marks -->
+  <g stroke="#ffc94d" stroke-width="2">
+    <path d="M20 8 V44 M8 20 H44"/>
+    <path d="M780 8 V44 M792 20 H756"/>
+    <path d="M20 516 V552 M8 540 H44"/>
+    <path d="M780 516 V552 M792 540 H756"/>
+  </g>
+
+  <!-- sparkles -->
+  <g fill="#ffc94d">
+    <path d="M120 46 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3 z"/>
+    <path d="M688 88 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z" fill-opacity="0.7"/>
+    <path d="M300 516 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2 z" fill-opacity="0.6"/>
+  </g>
+
+  <!-- top bar -->
+  <g transform="translate(24 62)">
+    <path d="M12 2.5 L18.5 5 V10 C18.5 14.5 15.9 18.4 12 19.5 C8.1 18.4 5.5 14.5 5.5 10 V5 Z" fill="#ffc94d"/>
+    <path d="M12 7 L15.5 8.4 V11.3 C15.5 13.9 14 16.5 12 17.3 C10 16.5 8.5 13.9 8.5 11.3 V8.4 Z" fill="#1e3a5f"/>
+    <text x="25" y="15" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="16" font-weight="700" fill="#f4efe2" letter-spacing="-0.5">PENSA</text>
+  </g>
+  <g transform="translate(560 56)">
+    <rect width="118" height="26" rx="13" fill="#13222e" stroke="#00a46a"/>
+    <circle cx="17" cy="13" r="3.5" fill="#00a46a"/>
+    <text x="27" y="17" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#00a46a">SIM · DEV</text>
+  </g>
+  <g transform="translate(686 56)">
+    <rect width="92" height="26" rx="6" fill="#ffc94d"/>
+    <text x="46" y="17" text-anchor="middle" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" font-weight="700" fill="#0f1520">Connect</text>
+  </g>
+
+  <!-- stat cards -->
+  <g>
+    <g transform="translate(24 110)">
+      <rect width="180" height="70" rx="10" fill="#131a27" stroke="#32405a"/>
+      <rect x="16" y="14" width="34" height="3" fill="#ffc94d"/>
+      <text x="16" y="30" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#827d70">TOTAL VALUE</text>
+      <text x="16" y="58" font-family="'IBM Plex Mono','Consolas',monospace" font-size="22" font-weight="700" fill="#ffc94d">$1,240.00</text>
+    </g>
+    <g transform="translate(214 110)">
+      <rect width="180" height="70" rx="10" fill="#131a27" stroke="#32405a"/>
+      <rect x="16" y="14" width="34" height="3" fill="#06b6d4"/>
+      <text x="16" y="30" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#827d70">DEPOSITED</text>
+      <text x="16" y="58" font-family="'IBM Plex Mono','Consolas',monospace" font-size="22" font-weight="700" fill="#f4efe2">$37.00</text>
+    </g>
+    <g transform="translate(404 110)">
+      <rect width="180" height="70" rx="10" fill="#131a27" stroke="#32405a"/>
+      <rect x="16" y="14" width="34" height="3" fill="#00a46a"/>
+      <text x="16" y="30" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#827d70">RETURNS</text>
+      <polyline points="16,52 40,48 62,52 84,42 106,46 128,36 150,40 168,32" fill="none" stroke="#00a46a" stroke-width="2.5" stroke-linecap="round"/>
+      <text x="16" y="62" font-family="'IBM Plex Mono','Consolas',monospace" font-size="22" font-weight="700" fill="#00a46a">+$12.30</text>
+    </g>
+    <g transform="translate(594 110)">
+      <rect width="180" height="70" rx="10" fill="#131a27" stroke="#32405a"/>
+      <rect x="16" y="14" width="34" height="3" fill="#06b6d4"/>
+      <text x="16" y="30" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#827d70">EXPECTED APR</text>
+      <text x="16" y="58" font-family="'IBM Plex Mono','Consolas',monospace" font-size="22" font-weight="700" fill="#06b6d4">4.90%</text>
+    </g>
+  </g>
+
+  <!-- holdings panel -->
+  <g transform="translate(24 200)">
+    <rect width="440" height="248" rx="12" fill="#131a27" stroke="#27313f"/>
+    <text x="18" y="28" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="13" font-weight="600" fill="#f4efe2">Holdings</text>
+    <rect x="360" y="16" width="62" height="20" rx="10" fill="none" stroke="#32405a"/>
+    <text x="391" y="30" text-anchor="middle" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#827d70">3 positions</text>
+
+    <g transform="translate(0 36)">
+      <!-- donut: flat rings -->
+      <circle cx="120" cy="96" r="52" fill="none" stroke="#202b3d" stroke-width="22"/>
+      <circle cx="120" cy="96" r="52" fill="none" stroke="#ffc94d" stroke-width="22" stroke-dasharray="137 327" stroke-dashoffset="0" transform="rotate(-90 120 96)"/>
+      <circle cx="120" cy="96" r="52" fill="none" stroke="#06b6d4" stroke-width="22" stroke-dasharray="78 327" stroke-dashoffset="-137" transform="rotate(-90 120 96)"/>
+      <circle cx="120" cy="96" r="52" fill="none" stroke="#00a46a" stroke-width="22" stroke-dasharray="111 327" stroke-dashoffset="-215" transform="rotate(-90 120 96)"/>
+      <circle cx="120" cy="96" r="38" fill="#0f1520"/>
+      <text x="120" y="92" text-anchor="middle" font-family="'IBM Plex Mono','Consolas',monospace" font-size="18" font-weight="700" fill="#f4efe2">$1,240</text>
+      <text x="120" y="110" text-anchor="middle" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="10" fill="#827d70">TOTAL</text>
+
+      <g transform="translate(214 20)">
+        <rect x="0" y="0" width="202" height="160" rx="10" fill="#182130" stroke="#27313f"/>
+        <g transform="translate(14 18)">
+          <circle cx="5" cy="5" r="4" fill="#ffc94d"/>
+          <text x="16" y="9" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#ded8c9">RWA · treasuries</text>
+          <text x="164" y="9" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="11" fill="#f4efe2">$519</text>
+          <rect x="0" y="16" width="178" height="5" rx="2.5" fill="#202b3d"/>
+          <rect x="0" y="16" width="75" height="5" rx="2.5" fill="#ffc94d"/>
+        </g>
+        <g transform="translate(14 62)">
+          <circle cx="5" cy="5" r="4" fill="#06b6d4"/>
+          <text x="16" y="9" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#ded8c9">DeFi · lending</text>
+          <text x="164" y="9" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="11" fill="#f4efe2">$297</text>
+          <rect x="0" y="16" width="178" height="5" rx="2.5" fill="#202b3d"/>
+          <rect x="0" y="16" width="43" height="5" rx="2.5" fill="#06b6d4"/>
+        </g>
+        <g transform="translate(14 106)">
+          <circle cx="5" cy="5" r="4" fill="#00a46a"/>
+          <text x="16" y="9" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" fill="#ded8c9">Stable · USDC</text>
+          <text x="164" y="9" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="11" fill="#f4efe2">$421</text>
+          <rect x="0" y="16" width="178" height="5" rx="2.5" fill="#202b3d"/>
+          <rect x="0" y="16" width="61" height="5" rx="2.5" fill="#00a46a"/>
+        </g>
+      </g>
+    </g>
+  </g>
+
+  <!-- strategy panel -->
+  <g transform="translate(480 200)">
+    <rect width="296" height="248" rx="12" fill="#131a27" stroke="#27313f"/>
+    <text x="18" y="28" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="13" font-weight="600" fill="#f4efe2">AI strategy</text>
+    <rect x="176" y="14" width="102" height="22" rx="11" fill="#3a2f14" stroke="#f5a400"/>
+    <text x="227" y="30" text-anchor="middle" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="10" font-weight="600" fill="#ffd66b">Balanced · 34</text>
+
+    <g transform="translate(18 56)">
+      <rect x="0" y="0" width="260" height="64" rx="10" fill="#182130"/>
+      <text x="14" y="20" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#827d70">RISK 34 / 100</text>
+      <text x="246" y="20" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#ffc94d">LOW</text>
+      <rect x="14" y="30" width="232" height="6" rx="3" fill="#202b3d"/>
+      <rect x="14" y="30" width="79" height="6" rx="3" fill="#ffc94d"/>
+      <circle cx="93" cy="33" r="6" fill="#ffc94d" stroke="#0f1520" stroke-width="2"/>
+      <text x="14" y="54" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="9" fill="#827d70">2% drift — no rebalance needed</text>
+    </g>
+
+    <g transform="translate(18 136)">
+      <g>
+        <text x="0" y="8" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#ded8c9">TBILL</text>
+        <text x="242" y="8" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#00a46a">4.90% APY</text>
+        <rect x="0" y="14" width="260" height="5" rx="2.5" fill="#202b3d"/>
+        <rect x="0" y="14" width="109" height="5" rx="2.5" fill="#ffc94d"/>
+      </g>
+      <g transform="translate(0 32)">
+        <text x="0" y="8" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#ded8c9">AAVE-USDC</text>
+        <text x="242" y="8" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#00a46a">5.20% APY</text>
+        <rect x="0" y="14" width="260" height="5" rx="2.5" fill="#202b3d"/>
+        <rect x="0" y="14" width="62" height="5" rx="2.5" fill="#06b6d4"/>
+      </g>
+      <g transform="translate(0 64)">
+        <text x="0" y="8" font-family="'Hanken Grotesk','Segoe UI',sans-serif" font-size="11" font-weight="600" fill="#ded8c9">USDC</text>
+        <text x="242" y="8" text-anchor="end" font-family="'IBM Plex Mono','Consolas',monospace" font-size="10" fill="#00a46a">3.50% APY</text>
+        <rect x="0" y="14" width="260" height="5" rx="2.5" fill="#202b3d"/>
+        <rect x="0" y="14" width="88" height="5" rx="2.5" fill="#00a46a"/>
+      </g>
+    </g>
+
+    <g transform="translate(18 220)">
+      <line x1="0" y1="0" x2="260" y2="0" stroke="#27313f"/>
+      <text x="0" y="20" font-family="'IBM Plex Mono','Consolas',monospace" font-size="9" fill="#827d70">STRATEGY · 0x7f3a…c91 · LIVE</text>
+    </g>
+  </g>
+</svg>
