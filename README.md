@@ -120,6 +120,59 @@ pnpm deploy:mainnet   # requires a real funded deployer key + `APP_ENV=prod`
 pnpm seed:mainnet
 ```
 
+## 7. Deploy for judging — one public URL, near-zero cost
+
+Everything ships in a single Docker image (`Dockerfile`): the built frontend SPA
+is served **same-origin** by the FastAPI backend (which embeds the AI agent) and
+the Telegram bot runs in the same container. One URL is enough for the whole
+product — no CORS, no cross-origin RPC. It listens on `$PORT` (default `7860`,
+the Hugging Face Spaces port).
+
+```bash
+docker build -t pensa . && docker run -d -p 7860:7860 \
+  -v "$PWD/.env:/app/.env:ro" \
+  -e TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" pensa
+```
+
+Set these in the target platform (HF Spaces → Settings → Variables and Secrets;
+never bake real keys into the image — `.env` is gitignore'd and not copied):
+
+| Variable | Notes |
+|----------|-------|
+| `APP_ENV` | `staging` (testnet) or `prod` (mainnet) |
+| `DEPLOYER_PRIVATE_KEY`, `AGENT_PRIVATE_KEY` | needed for on-chain write flows |
+| `HUGGINGFACE_API_KEY` | optional, improves AI; rules fallback without it |
+| `TELEGRAM_BOT_TOKEN` | optional — starts the Telegram bot when set |
+| `SERVE_SPA` | `0` to disable SPA serving if you mount the UI elsewhere |
+
+**Zero-cost hosting (recommended for judging):**
+- **Hugging Face Spaces** — new Space → `Docker` SDK → point at this repo
+  (or paste the Dockerfile). Free CPU tier, no credit card, persistent public
+  URL like `https://<you>-pensa.hf.space`. Port auto-detected via `$PORT`.
+- **Alternative**: Railway / Render / Fly.io can run the same Dockerfile
+  unchanged.
+
+### Judge demo script (external judges, anywhere in the world)
+
+1. Open the **one public URL** — the landing page loads from the same server.
+2. On the onboarding page pick **Testnet** (chain 1952) and connect a wallet
+   (OKX/MetaMask). The backend auto-creates a vault for that address and stores
+   an AI strategy hash on-chain. Explain the 3% auto-allocation.
+3. Open the **Dashboard**: live vault holdings (mintable demo USDC from
+   `fund:testnet`), risk score, expected APR, and Holdings/Strategy tabs update
+   in real time. 3 seeded demo vaults are already on-chain.
+4. Live payout routes:
+   - `POST {URL}/payments/auto` `{"user":"0x…","asset":"USDC","amount":1000}` →
+     allocates 3% into the vault (real testnet tx; agent signs).
+   - `GET {URL}/payments/x402/meta` → x402 payment rail discovery.
+5. AI on demand: `POST {URL}/strategies/recommend` returns live market yields
+   (RWA/DeFi/stables), the resulting allocations, and `expectedApr` — even with
+   no HF key the rule engine produces a sane portfolio.
+6. (Optional) Telegram bot: start it with `/network testnet`, then `/balance`,
+   `/strategy`, `/adjust 5`, `/pay 1000`.
+
+Sanity endpoints judges can hit instantly — `GET /health`, `GET /system/config`.
+
 ## Verification
 
 - `GET /health` → `{"status":"ok","service":"pensa-backend","env":"dev|staging"}`
