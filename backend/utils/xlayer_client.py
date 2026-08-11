@@ -93,7 +93,16 @@ class XLayerClient:
         addr = deployments.get("factory")
         if not addr:
             return None
-        return w3.eth.contract(address=addr, abi=FACTORY_ABI)
+        return w3.eth.contract(address=self._cs(addr), abi=FACTORY_ABI)
+
+    @staticmethod
+    def _cs(addr: str) -> str:
+        """Checksum an address — web3.py rejects case-insensitive addresses."""
+        from web3 import Web3
+        addr = str(addr).strip()
+        if addr.startswith("0x") and len(addr) == 42:
+            return Web3.to_checksum_address(addr)
+        return addr
 
     @property
     def is_simulation(self) -> bool:
@@ -137,9 +146,9 @@ class XLayerClient:
         if not factory:
             return None
         try:
-            vault = factory.functions.getUserVault(user).call()
+            vault = factory.functions.getUserVault(self._cs(user)).call()
             if vault and int(vault, 16) != 0:
-                return self.vault_snapshot(vault, network)
+                return self.vault_snapshot(self._cs(vault), network)
         except Exception as exc:
             log.warning("get_vault failed: %s", exc)
         return None
@@ -270,10 +279,17 @@ class XLayerClient:
         if not factory:
             return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
         w3 = self._web3(network)
-        asset_addr = self._resolve_asset(asset, network)
+        user = self._cs(user)
+        asset_addr = self._cs(self._resolve_asset(asset, network))
         decimals = self._asset_decimals(w3, asset_addr)
         raw = int(round(amount * (10 ** decimals)))
         agent = w3.eth.account.from_key(self.settings.agent_private_key)
+
+        # Does the user have a vault? Contract would revert with "No vault" —
+        # check first so we return a clean 404 instead of a raw tx failure.
+        vault = factory.functions.getUserVault(user).call()
+        if not vault or int(vault, 16) == 0:
+            return None
 
         # Ensure the agent can pull funds: approve the factory when needed.
         self._ensure_allowance(w3, asset_addr, factory.address, agent, raw)
@@ -331,6 +347,7 @@ class XLayerClient:
             return {"user": user, "status": "unavailable", "detail": "No deployment for requested network"}
         w3 = self._web3(network)
         # Returns are booked in the vault's first held asset's decimals.
+        user = self._cs(user)
         vault = self.get_vault(user, network)
         assets = vault.get("holdings", {}) if vault else {}
         decimals = self._asset_decimals(w3, next(iter(assets), user)) if assets else 6

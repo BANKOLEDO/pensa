@@ -44,14 +44,49 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   });
   const [connecting, setConnecting] = useState(false);
 
-  const setNetwork = useCallback((n: NetworkId) => {
-    setNetworkState(n);
+  const switchToNetwork = useCallback(async (n: NetworkId) => {
+    const eth = (window as unknown as { ethereum?: EthProvider }).ethereum;
+    if (!eth) return;
+    const chain = CHAINS[n];
+    const addParams = {
+      chainId: chain.chainIdHex,
+      chainName: chain.chainName,
+      nativeCurrency: chain.nativeCurrency,
+      rpcUrls: chain.rpcUrls,
+      blockExplorerUrls: chain.blockExplorerUrls,
+    };
     try {
-      localStorage.setItem(STORAGE_NETWORK, n);
-    } catch {
-      /* ignore storage errors */
+      await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chain.chainIdHex }] });
+    } catch (e) {
+      const code = (e as { code?: number }).code;
+      if (code === 4902) {
+        await eth.request({ method: "wallet_addEthereumChain", params: [addParams] });
+        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chain.chainIdHex }] });
+      } else {
+        throw e;
+      }
     }
   }, []);
+
+  const setNetwork = useCallback(
+    async (n: NetworkId) => {
+      setNetworkState(n);
+      try {
+        localStorage.setItem(STORAGE_NETWORK, n);
+      } catch {
+        /* ignore storage errors */
+      }
+      // Keep the connected wallet's chain in sync — without this, on-chain
+      // signatures (createVault, allocation, strategy) target the wrong chain
+      // and silently revert.
+      try {
+        await switchToNetwork(n);
+      } catch {
+        /* no wallet connected — ignore */
+      }
+    },
+    [switchToNetwork]
+  );
 
   const connect = useCallback(async () => {
     const eth = (window as unknown as { ethereum?: EthProvider }).ethereum;
@@ -71,22 +106,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         );
       }
       const addr = accounts[0];
-      const chain = CHAINS[network];
-      const addParams = {
-        chainId: chain.chainIdHex,
-        chainName: chain.chainName,
-        nativeCurrency: chain.nativeCurrency,
-        rpcUrls: chain.rpcUrls,
-        blockExplorerUrls: chain.blockExplorerUrls,
-      };
-      try {
-        await eth.request({ method: "wallet_switchEthereumChain", params: [{ chainId: chain.chainIdHex }] });
-      } catch (e) {
-        const code = (e as { code?: number }).code;
-        if (code === 4902) {
-          await eth.request({ method: "wallet_addEthereumChain", params: [addParams] });
-        }
-      }
+      await switchToNetwork(network);
       setWallet(addr);
       try {
         localStorage.setItem(STORAGE_KEY, addr);
@@ -96,7 +116,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } finally {
       setConnecting(false);
     }
-  }, [network]);
+  }, [network, switchToNetwork]);
 
   const disconnect = useCallback(() => {
     setWallet("");

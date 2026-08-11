@@ -40,6 +40,7 @@ export default function Dashboard() {
   const [strategy, setStrategy] = useState<StrategyRecommendation | null>(null);
   const [tab, setTab] = useState<TabKey>("overview");
   const [busy, setBusy] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [withdrawAmt, setWithdrawAmt] = useState("");
   const [allocBps, setAllocBps] = useState(300);
   const [toast, setToast] = useState<Toast>(null);
@@ -76,10 +77,12 @@ export default function Dashboard() {
       setVault(null);
       setStrategy(null);
       setFeed([]);
+      setLoading(false);
       return;
     }
     let cancelled = false;
     (async () => {
+      setLoading(true);
       const c = await fetchSystemConfig();
       const live = isLiveConfig(c);
       let v = await fetchVault(wallet);
@@ -93,10 +96,11 @@ export default function Dashboard() {
           } catch (e) {
             if (cancelled) return;
             showToast("err", `Vault creation declined: ${String(e).slice(0, 140)}`);
+            setLoading(false);
             return;
           }
           v = await fetchVault(wallet);
-          if (cancelled || !v) return;
+          if (cancelled || !v) { if (!cancelled) setLoading(false); return; }
         } else {
           v = await createVault(wallet, 300, 50, preferred);
           if (cancelled) return;
@@ -122,6 +126,7 @@ export default function Dashboard() {
         { icon: "wallet", t: "Vault connected", d: `${shortAddr(v.vault)} · ${fmtBps(v.allocationPercent)} allocation` },
         { icon: "spark", t: "AI strategy loaded", d: `APR ${s.expectedApr.toFixed(2)}% · ${s.market.is_fallback ? "fallback market data" : "live market data"}` },
       ]);
+      if (!cancelled) setLoading(false);
     })();
     return () => {
       cancelled = true;
@@ -729,7 +734,25 @@ export default function Dashboard() {
           </aside>
 
           {/* main */}
-          <main className="dash-main">{TAB_RENDER[tab]()}</main>
+          <main className="dash-main">
+            {loading ? (
+              <div className="panel">
+                <div className="panel-body" style={{ display: "grid", gap: 14 }}>
+                  <div className="row gap-3" style={{ gap: 12 }}>
+                    <span className="pill pill-accent" style={{ animation: "pulse 1.4s ease-in-out infinite" }}>Loading on-chain vault…</span>
+                    <p className="text-sm muted" style={{ margin: 0 }}>
+                      Reading your vault, strategy, and live yields from X Layer — testnet RPCs are a bit slow.
+                    </p>
+                  </div>
+                  <div style={{ height: 8, background: "var(--border-200)", borderRadius: 999, overflow: "hidden" }}>
+                    <span style={{ display: "block", height: "100%", width: "45%", background: "var(--accent-100)", animation: "pulse 1.4s ease-in-out infinite" }} />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              TAB_RENDER[tab]()
+            )}
+          </main>
         </div>
       )}
 
