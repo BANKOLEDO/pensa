@@ -16,7 +16,9 @@ COPY frontend/package.json frontend/pnpm-lock.yaml frontend/pnpm-workspace.yaml 
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY frontend/ .
 ARG VITE_API_URL=""
+ARG ADMIN_TOKEN=""
 ENV VITE_API_URL="${VITE_API_URL}"
+ENV VITE_ADMIN_TOKEN="${ADMIN_TOKEN}"
 RUN pnpm build
 
 # ---- stage 2: python runtime (backend + AI agent + bot) ------
@@ -25,6 +27,10 @@ ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
     PYTHONDONTWRITEBYTECODE=1
 WORKDIR /app
+
+# Backend reads the same ADMIN_TOKEN at runtime as the frontend was built with.
+ARG ADMIN_TOKEN=""
+ENV ADMIN_TOKEN="${ADMIN_TOKEN}"
 
 COPY requirements.txt .
 RUN pip install --upgrade pip && pip install -r requirements.txt

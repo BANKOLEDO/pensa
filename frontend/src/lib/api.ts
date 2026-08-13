@@ -15,11 +15,16 @@ export function getActiveNetwork(): NetworkId {
   return activeNetwork;
 }
 
+/** Sent on every request; the backend requires it on agent-signed write routes. */
+const ADMIN_TOKEN = (import.meta.env.VITE_ADMIN_TOKEN as string) || "";
+
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const sep = path.includes("?") ? "&" : "?";
   const url = `${API_URL}${path}${sep}network=${activeNetwork}`;
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (ADMIN_TOKEN) headers["X-PENSA-ADMIN"] = ADMIN_TOKEN;
   const res = await fetch(url, {
-    headers: { "Content-Type": "application/json" },
+    headers,
     ...init,
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
