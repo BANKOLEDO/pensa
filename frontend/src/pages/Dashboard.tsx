@@ -6,9 +6,11 @@ import Donut from "../components/Donut";
 import { EnvBadge } from "../components/Header";
 import { adjustAllocation, createVault, fetchSystemConfig, fetchVault, recommendStrategy, setActiveNetwork, simulatePayout } from "../lib/api";
 import { isLiveConfig, signCreateVault, signUpdateAllocation, signUpdateStrategy } from "../lib/pensa";
+import Tour, { type TourStep } from "../components/Tour";
 import { useWallet } from "../lib/wallet";
 import { fmtBps, shortAddr, tokenLabel, usd } from "../lib/format";
 import type { StrategyRecommendation, SystemConfig, Vault } from "../lib/types";
+import { loadProfile, saveProfile, type UserProfile } from "../lib/profile";
 
 type Toast = { kind: "ok" | "err"; msg: string } | null;
 type TabKey = "overview" | "holdings" | "strategy" | "activity" | "settings";
@@ -45,7 +47,51 @@ export default function Dashboard() {
   const [allocBps, setAllocBps] = useState(300);
   const [toast, setToast] = useState<Toast>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [tourOpen, setTourOpen] = useState(false);
+  const [userProfile, setUserProfile] = useState<UserProfile>(() => loadProfile());
+  const [editingProfile, setEditingProfile] = useState(false);
+  const profileRef = useRef(userProfile);
+  profileRef.current = userProfile;
   const toastTimer = useRef<number | null>(null);
+
+  const TOUR_STEPS: TourStep[] = useMemo(
+    () => [
+      {
+        id: "welcome",
+        title: "Your pension, on autopilot",
+        body: "Every day your vault goes to work.",
+      },
+      {
+        id: "overview",
+        tab: "overview",
+        target: "tour-stats",
+        title: "This is your pension vault",
+        body: "It lives on-chain and belongs to you. \"Total value\" is what you've saved so far, \"Deposited\" is the slice carved from every payout, and \"Returns\" is what the AI has grown it by.",
+      },
+      {
+        id: "auto",
+        tab: "holdings",
+        target: "tour-auto",
+        title: "Saving happens automatically",
+        body: "When a gig platform pays you, 3% is silently routed into your vault — no extra step, no willpower needed. You can raise or lower that to 0–10% anytime.",
+      },
+      {
+        id: "strategy",
+        tab: "strategy",
+        target: "tour-strategy",
+        title: "The AI manages the money",
+        body: "The agent reads your age, income and risk appetite, checks live yields, then spreads the vault across stable assets, tokenized treasuries (RWA) and DeFi lending to earn APR. Hit \"Re-optimize\" and it rebalances on the spot.",
+      },
+      {
+        id: "payout",
+        tab: "overview",
+        target: "tour-payout",
+        title: "See it happen in one click",
+        body: "Press \"Add demo payout\" to simulate a $1,000 gig payment. Watch the 3% ($30) move into your vault in a real testnet transaction, then check Holdings — the AI was working the whole time.",
+      },
+    ],
+    []
+  );
 
   const showToast = useCallback((kind: "ok" | "err", msg: string) => {
     setToast({ kind, msg });
@@ -92,7 +138,7 @@ export default function Dashboard() {
         if (live) {
           try {
             showToast("ok", "Creating your vault — confirm in your wallet…");
-            await signCreateVault(c.factoryAddress, 300, preferred, 50, (hash) => showToast("ok", `Vault tx sent · ${shortAddr(hash, 12)}`));
+            await signCreateVault(c.factoryAddress, 300, preferred, profileRef.current.risk_tolerance, (hash) => showToast("ok", `Vault tx sent · ${shortAddr(hash, 12)}`));
           } catch (e) {
             if (cancelled) return;
             showToast("err", `Vault creation declined: ${String(e).slice(0, 140)}`);
@@ -102,14 +148,15 @@ export default function Dashboard() {
           v = await fetchVault(wallet);
           if (cancelled || !v) { if (!cancelled) setLoading(false); return; }
         } else {
-          v = await createVault(wallet, 300, 50, preferred);
+          v = await createVault(wallet, 300, profileRef.current.risk_tolerance, preferred);
           if (cancelled) return;
         }
       }
       setVault(v);
       setAllocBps(v.allocationPercent);
 
-      const s = await recommendStrategy(wallet, { risk_tolerance: v.riskTolerance });
+      const s = await recommendStrategy(wallet, { risk_tolerance: profileRef.current.risk_tolerance, age: profileRef.current.age, monthly_income: profileRef.current.monthly_income, retirement_age: profileRef.current.retirement_age });
+
       if (cancelled) return;
       if (live && s.strategyHash && s.strategyHash !== v.strategyHash) {
         try {
@@ -136,6 +183,32 @@ export default function Dashboard() {
   const handleDisconnect = () => {
     disconnect();
     showToast("ok", "Wallet disconnected");
+  };
+
+  // Open the guided tour the first time the dashboard loads.
+  useEffect(() => {
+    if (!wallet) return;
+    try {
+      if (!localStorage.getItem("pensa:tour:v1")) {
+        const t = window.setTimeout(() => setTourOpen(true), 800);
+        return () => window.clearTimeout(t);
+      }
+    } catch {
+      /* ignore storage errors */
+    }
+  }, [wallet]);
+
+  const handleTourStep = (s: TourStep) => {
+    if (s.tab) setTab(s.tab as TabKey);
+  };
+
+  const closeTour = () => {
+    setTourOpen(false);
+    try {
+      localStorage.setItem("pensa:tour:v1", "1");
+    } catch {
+      /* ignore storage errors */
+    }
   };
 
   const handleAllocation = async () => {
@@ -190,7 +263,12 @@ export default function Dashboard() {
     setBusy(true);
     try {
       const live = isLiveConfig(config);
-      const s = await recommendStrategy(wallet, { risk_tolerance: vault?.riskTolerance ?? 50 });
+      const s = await recommendStrategy(wallet, {
+        risk_tolerance: userProfile.risk_tolerance,
+        age: userProfile.age,
+        monthly_income: userProfile.monthly_income,
+        retirement_age: userProfile.retirement_age,
+      });
       if (live && s.strategyHash) {
         showToast("ok", "Apply strategy — confirm in your wallet…");
         await signUpdateStrategy(config!.factoryAddress, s.strategyHash, (h) => showToast("ok", `Strategy tx sent · ${shortAddr(h, 12)}`));
@@ -203,6 +281,12 @@ export default function Dashboard() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleProfileSave = () => {
+    saveProfile(userProfile);
+    setEditingProfile(false);
+    showToast("ok", "Profile saved — re-optimize to re-fit your strategy");
   };
 
   const handleAddFunds = async () => {
@@ -252,12 +336,12 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="stat-grid">
+      <div className="stat-grid" id="tour-stats">
         {[
-          { l: "Total value", v: usd(vault?.totalValue ?? 0), sub: vault?.simulated ? "simulated" : "on-chain" },
-          { l: "Deposited", v: usd(vault?.totalDeposited ?? 0), sub: "3% of every payout" },
-          { l: "Returns", v: usd(vault?.totalReturns ?? 0), sub: `+${(vault?.growthPct ?? 0).toFixed(2)}% growth` },
-          { l: "Expected APR", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}%`, sub: "from AI allocation" },
+          { l: "Total value", v: usd(vault?.totalValue ?? 0), sub: vault?.simulated ? "simulated" : "saved so far" },
+          { l: "Deposited", v: usd(vault?.totalDeposited ?? 0), sub: `${fmtBps(allocBps)} auto-saved from payouts` },
+          { l: "Returns", v: usd(vault?.totalReturns ?? 0), sub: `+${(vault?.growthPct ?? 0).toFixed(2)}% earned` },
+          { l: "Expected APR", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}%`, sub: "AI-targeted this year" },
         ].map((c) => (
           <div className="stat" key={c.l}>
             <div className="stat-label">
@@ -270,14 +354,35 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div className="row gap-3" style={{ alignItems: "center", marginTop: 16 }}>
-        <button className="btn btn-accent" onClick={handleAddFunds} disabled={busy}>
-          <Icon name="bolt" size={15} />
-          Add demo payout ($1,000)
+      <div
+        className="border rounded"
+        id="tour-payout"
+        style={{
+          marginTop: 18,
+          padding: "16px 18px",
+          background: "linear-gradient(120deg, color-mix(in srgb, var(--accent-100) 10%, transparent), transparent 60%)",
+          border: "1px solid color-mix(in srgb, var(--accent-100) 35%, var(--border-200))",
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          gap: 14,
+          justifyContent: "space-between",
+        }}
+      >
+        <div style={{ flex: "1 1 300px" }}>
+          <div className="text-sm" style={{ fontWeight: 700, marginBottom: 4 }}>Try a demo payout</div>
+          <p className="text-sm muted" style={{ margin: 0 }}>
+            Simulate a $1,000 gig payment — <span style={{ color: "var(--accent-100)", fontWeight: 600 }}>{fmtBps(allocBps)}</span> is routed into your vault in a real testnet transaction.
+          </p>
+        </div>
+        <button className="btn btn-accent btn-lg" onClick={handleAddFunds} disabled={busy} style={{ flex: "none" }}>
+          {busy ? "Processing…" : (
+            <>
+              <Icon name="bolt" size={17} />
+              Add demo payout
+            </>
+          )}
         </button>
-        <p className="text-sm muted" style={{ margin: 0 }}>
-          Simulates a gig payout — {fmtBps(allocBps)} is routed into your vault on-chain.
-        </p>
       </div>
 
       <div className="row gap-6" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -439,21 +544,26 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="panel">
+      <div className="panel" id="tour-auto">
         <div className="panel-head">
-          <h3 className="heading heading-sm" style={{ margin: 0 }}>How payouts flow in</h3>
+          <h3 className="heading heading-sm" style={{ margin: 0 }}>How money flows in</h3>
           <Icon name="layers" size={16} className="accent-text" />
         </div>
         <div className="panel-body">
           <p className="text-sm muted">
-            Each payout you receive routes <span className="mono-sm" style={{ color: "var(--accent-100)" }}>{fmtBps(allocBps)}</span> into your vault automatically. The AI agent rebalances across stable assets, tokenized treasuries, and DeFi lending.
+            Every payout you receive routes <span className="mono-sm" style={{ color: "var(--accent-100)" }}>{fmtBps(allocBps)}</span> into your vault automatically. The AI agent then grows it across stable assets, tokenized treasuries (RWA), and DeFi lending.
           </p>
         </div>
       </div>
     </>
   );
 
-  const renderStrategy = () => (
+  const renderStrategy = () => {
+    const riskDesc = (strategy?.risk.level ?? "Balanced").toLowerCase();
+    const dataNote = strategy?.market.is_fallback
+      ? "yields are estimated from a built-in snapshot (no live oracle needed)"
+      : "yields are read live from market data";
+    return (
     <>
       <div className="row space-between" style={{ flexWrap: "wrap", gap: 16 }}>
         <div className="stack-2">
@@ -466,11 +576,17 @@ export default function Dashboard() {
         </button>
       </div>
 
+      <p className="text-sm muted" style={{ maxWidth: 680 }}>
+        The AI picked this mix from your age, income and risk appetite. Press{" "}
+        <span style={{ color: "var(--fg-300)" }}>Re-optimize</span> anytime and it rebalances your vault
+        against the latest market yields.
+      </p>
+
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
-          { l: "Expected APR", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}%`, sub: "weighted across positions" },
-          { l: "Risk score", v: `${riskPct}/100`, sub: strategy?.risk.level ?? "Balanced" },
-          { l: "Profile", v: profile ? `${profile.age} · retires ${profile.retirement_age}` : "—", sub: `income ${usd(profile?.monthly_income ?? 0, 0)}/mo` },
+          { l: "Expected return", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}% APR`, sub: "aimed for this year" },
+          { l: "Risk appetite", v: `${riskPct}/100`, sub: `a ${riskDesc} approach` },
+          { l: "Your profile", v: profile ? `${profile.age} yrs · retires at ${profile.retirement_age}` : "—", sub: `income ${usd(profile?.monthly_income ?? 0, 0)}/mo` },
         ].map((c) => (
           <div className="stat" key={c.l}>
             <div className="stat-label">{c.l}</div>
@@ -482,35 +598,22 @@ export default function Dashboard() {
 
       <div className="panel">
         <div className="panel-head">
-          <h3 className="heading heading-sm" style={{ margin: 0 }}>Risk position</h3>
+          <h3 className="heading heading-sm" style={{ margin: 0 }}>What the AI decided</h3>
           <span className="pill pill-accent">{strategy?.risk.level ?? "Balanced"}</span>
         </div>
         <div className="panel-body stack-4">
-          <div className="border rounded" style={{ padding: "16px 18px", background: "var(--bg-200)" }}>
-            <div className="row space-between">
-              <span className="mono-sm">risk {riskPct}/100</span>
-              <span className="mono-sm muted">
-                {strategy?.market.is_fallback ? "fallback market data" : "live market data"}
-              </span>
-            </div>
-            <div style={{ height: 6, background: "var(--border-200)", borderRadius: 999, marginTop: 16, position: "relative" }}>
-              <span
-                style={{
-                  position: "absolute",
-                  left: `calc(${Math.min(Math.max(riskPct, 2), 98)}% - 5px)`,
-                  top: -4,
-                  width: 14,
-                  height: 14,
-                  borderRadius: "50%",
-                  background: "var(--accent-100)",
-                  boxShadow: "0 0 0 4px var(--accent-400)",
-                }}
-              />
-            </div>
-            <p className="text-sm muted" style={{ marginTop: 12 }}>{strategy?.risk.note}</p>
+          <div className="border rounded" style={{ padding: 16, background: "var(--bg-200)" }}>
+            <p className="text-sm" style={{ margin: 0 }}>
+              Your vault is split across three kinds of investments, in these proportions:
+            </p>
+            <ul className="text-sm muted" style={{ margin: "10px 0 0", paddingLeft: 18 }}>
+              <li><span style={{ color: "var(--green-100)" }}>Stable assets</span> — cash-like, steady floor for your savings</li>
+              <li><span style={{ color: "var(--accent-100)" }}>Tokenized treasuries (RWA)</span> — real-world government bonds, higher yield</li>
+              <li><span style={{ color: "var(--blue-100)" }}>DeFi lending pools</span> — higher-return lending. {dataNote}.</li>
+            </ul>
           </div>
 
-          <div className="stack-3">
+          <div className="stack-3" id="tour-strategy">
             {allocations.map((a) => (
               <div key={`${a.asset}-${a.project ?? a.category}`}>
                 <div className="row space-between" style={{ marginBottom: 6 }}>
@@ -519,6 +622,7 @@ export default function Dashboard() {
                     <span className="text-sm" style={{ fontWeight: 600 }}>{a.asset}</span>
                     {a.project && <span className="chip">{a.project}</span>}
                     <span className="chip">{a.category}</span>
+                    <span className="chip" style={{ width: `${Math.max(a.percentage, 6)}%`, minWidth: 34, textAlign: "center" }}>{a.percentage}%</span>
                   </span>
                   <span className="mono-sm" style={{ color: "var(--green-100)" }}>{a.apy}% APY</span>
                 </div>
@@ -531,14 +635,15 @@ export default function Dashboard() {
           </div>
 
           {strategy?.strategyHash && (
-            <div className="mono-sm muted" style={{ borderTop: "1px solid var(--border-100)", paddingTop: 14 }}>
-              strategy · <span style={{ color: "var(--fg-300)" }}>{shortAddr(strategy.strategyHash, 12)}</span>
+            <div className="text-sm muted" style={{ borderTop: "1px solid var(--border-100)", paddingTop: 14 }}>
+              This portfolio is recorded on-chain (strategy id <span className="mono-sm" style={{ color: "var(--fg-300)" }}>{shortAddr(strategy.strategyHash, 10)}</span>) — anyone can verify it.
             </div>
           )}
         </div>
       </div>
     </>
-  );
+    );
+  };
 
   const renderActivity = () => (
     <>
@@ -579,6 +684,76 @@ export default function Dashboard() {
 
       <div className="row gap-6" style={{ alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: "1 1 420px", display: "grid", gap: 24 }}>
+          <div className="panel">
+            <div className="panel-head">
+              <h3 className="heading heading-sm" style={{ margin: 0 }}>Investor profile</h3>
+              <span className="pill pill-accent">{userProfile.risk_tolerance <= 30 ? "Conservative" : userProfile.risk_tolerance <= 65 ? "Balanced" : "Aggressive"}</span>
+            </div>
+            <div className="panel-body stack-4">
+              {editingProfile ? (
+                <>
+                  <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+                    {[
+                      { key: "age" as const, label: "Age" },
+                      { key: "monthly_income" as const, label: "Monthly income ($)" },
+                      { key: "retirement_age" as const, label: "Retirement age" },
+                    ].map((f) => (
+                      <label className="field" key={f.key} style={{ flex: "1 1 120px" }}>
+                        <span>{f.label}</span>
+                        <input
+                          type="number"
+                          value={userProfile[f.key]}
+                          onChange={(e) => setUserProfile((p) => ({ ...p, [f.key]: Number(e.target.value) || 0 }))}
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="field">
+                    <span className="text-sm muted">Risk appetite · {userProfile.risk_tolerance}/100</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="5"
+                      value={userProfile.risk_tolerance}
+                      onChange={(e) => setUserProfile((p) => ({ ...p, risk_tolerance: Number(e.target.value) }))}
+                    />
+                    <p className="text-xs muted" style={{ margin: 0 }}>
+                      Low = safer, keeps more in stable + treasuries. High = leans into DeFi lending for more APR.
+                    </p>
+                  </div>
+                  <div className="row gap-3">
+                    <button className="btn btn-accent" onClick={handleProfileSave}>Save profile</button>
+                    <button className="btn btn-ghost" onClick={() => setEditingProfile(false)}>Cancel</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="row space-between" style={{ borderBottom: "1px solid var(--border-100)", paddingBottom: 12 }}>
+                    <span className="text-sm muted">Age</span>
+                    <span className="mono-sm">{userProfile.age}</span>
+                  </div>
+                  <div className="row space-between" style={{ borderBottom: "1px solid var(--border-100)", paddingBottom: 12 }}>
+                    <span className="text-sm muted">Monthly income</span>
+                    <span className="mono-sm">{usd(userProfile.monthly_income, 0)}</span>
+                  </div>
+                  <div className="row space-between" style={{ borderBottom: "1px solid var(--border-100)", paddingBottom: 12 }}>
+                    <span className="text-sm muted">Retirement age</span>
+                    <span className="mono-sm">{userProfile.retirement_age}</span>
+                  </div>
+                  <div className="row space-between">
+                    <span className="text-sm muted">Risk appetite</span>
+                    <span className="mono-sm">{userProfile.risk_tolerance}/100</span>
+                  </div>
+                  <button className="btn btn-ghost" onClick={() => setEditingProfile(true)} style={{ width: "100%", justifyContent: "center" }}>
+                    <Icon name="settings" size={15} />
+                    Edit profile
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
           <div className="panel">
             <div className="panel-head">
               <h3 className="heading heading-sm" style={{ margin: 0 }}>Auto-allocation</h3>
@@ -705,6 +880,10 @@ export default function Dashboard() {
           </Link>
           <div className="nav-cta">
             <EnvBadge env={config?.env ?? "dev"} live={!!config && !config.simulated} />
+            <button className="btn btn-ghost btn-sm" onClick={() => setTourOpen(true)} title="Guided tour">
+              <Icon name="spark" size={15} />
+              Tour
+            </button>
             <button className="btn btn-ghost btn-sm" onClick={handleDisconnect} title="Disconnect">
               <Icon name="wallet" size={15} />
               {shortAddr(wallet)}
@@ -761,6 +940,8 @@ export default function Dashboard() {
           {toast.msg}
         </div>
       )}
+
+      <Tour steps={TOUR_STEPS} open={tourOpen} onStep={handleTourStep} onClose={closeTour} />
     </div>
   );
 }
