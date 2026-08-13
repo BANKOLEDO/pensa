@@ -6,6 +6,7 @@ import { Icon } from "../components/Icon";
 import { useWallet } from "../lib/wallet";
 import { shortAddr } from "../lib/format";
 import { CHAINS, NETWORKS } from "../lib/chains";
+import { DEFAULT_PROFILE, saveProfile, type UserProfile } from "../lib/profile";
 
 const STEPS = [
   { icon: "wallet" as const, t: "Connect your wallet", d: "OKX Wallet or MetaMask — your vault is tied to your address, no signup." },
@@ -17,15 +18,22 @@ export default function Onboarding() {
   const { wallet, connecting, network, setNetwork, connect } = useWallet();
   const navigate = useNavigate();
   const [error, setError] = useState("");
+  const [profile, setProfile] = useState<UserProfile>({ ...DEFAULT_PROFILE });
+
+  const patch = (p: Partial<UserProfile>) => setProfile((cur) => ({ ...cur, ...p }));
 
   const handleConnect = async () => {
     setError("");
     try {
       await connect();
-      navigate("/app", { replace: true });
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  };
+
+  const handleStart = () => {
+    saveProfile(profile);
+    navigate("/app", { replace: true });
   };
 
   return (
@@ -75,27 +83,117 @@ export default function Onboarding() {
             <h1 className="title" style={{ marginBlock: "20px 16px" }}>
               Your pension, one wallet away
             </h1>
-            <p className="text-lg muted" style={{ maxWidth: 540, marginInline: "auto", marginBottom: 32 }}>
-              Connect your wallet to view your pension. Your vault is tied to your address —
-              nothing to sign up, nothing to install. The dashboard reads it straight from the chain.
+            <p className="text-lg muted" style={{ maxWidth: 560, marginInline: "auto", marginBottom: 32 }}>
+              Connect your wallet to view your pension. Your vault lives on-chain and belongs to you —
+              nothing to sign up, nothing to install.
             </p>
 
-            <button className="btn btn-accent btn-lg" onClick={handleConnect} disabled={connecting}>
-              {connecting ? "Connecting…" : "Connect wallet"}
-              <Icon name="wallet" size={16} />
-            </button>
-            {error && (
-              <p className="text-sm" style={{ color: "var(--red-100)", maxWidth: 480, marginInline: "auto", marginTop: 16 }}>
-                {error}
-              </p>
+            {!wallet ? (
+              <>
+                <button className="btn btn-accent btn-lg" onClick={handleConnect} disabled={connecting}>
+                  {connecting ? "Connecting…" : "Connect wallet"}
+                  <Icon name="wallet" size={16} />
+                </button>
+                {error && (
+                  <p className="text-sm" style={{ color: "var(--red-100)", maxWidth: 480, marginInline: "auto", marginTop: 16 }}>
+                    {error}
+                  </p>
+                )}
+              </>
+            ) : (
+              <div className="stack-4" style={{ textAlign: "left", maxWidth: 560, marginInline: "auto" }}>
+                <p className="mono-sm muted" style={{ textAlign: "center", marginBottom: 0 }}>
+                  connected · {shortAddr(wallet)}
+                </p>
+
+                <div className="stack-2">
+                  <div className="eyebrow accent-text">1 · About you</div>
+                  <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
+                    <label className="field" style={{ flex: "1 1 150px" }}>
+                      <span>Age</span>
+                      <input
+                        type="number"
+                        min={16}
+                        max={100}
+                        value={profile.age}
+                        onChange={(e) => patch({ age: Number(e.target.value) || 16 })}
+                      />
+                    </label>
+                    <label className="field" style={{ flex: "1 1 150px" }}>
+                      <span>Monthly income ($)</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={profile.monthly_income}
+                        onChange={(e) => patch({ monthly_income: Number(e.target.value) || 0 })}
+                      />
+                    </label>
+                    <label className="field" style={{ flex: "1 1 150px" }}>
+                      <span>Planned retirement age</span>
+                      <input
+                        type="number"
+                        min={16}
+                        max={110}
+                        value={profile.retirement_age}
+                        onChange={(e) => patch({ retirement_age: Number(e.target.value) || 16 })}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="stack-2">
+                  <div className="eyebrow accent-text">2 · Your risk appetite</div>
+                  <p className="text-sm muted" style={{ margin: 0 }}>
+                    This tunes how aggressively the AI invests. You can change it later.
+                  </p>
+                  <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    {[
+                      { v: 20, label: "Conservative", d: "safe first" },
+                      { v: 50, label: "Balanced", d: "steady growth" },
+                      { v: 80, label: "Aggressive", d: "maximize returns" },
+                    ].map((o) => (
+                      <button
+                        key={o.v}
+                        type="button"
+                        onClick={() => patch({ risk_tolerance: o.v })}
+                        className="border rounded"
+                        style={{
+                          flex: "1 1 140px",
+                          padding: "12px 14px",
+                          background: profile.risk_tolerance === o.v ? "var(--bg-300)" : "var(--bg-100)",
+                          borderColor: profile.risk_tolerance === o.v ? "var(--accent-100)" : "var(--border-100)",
+                          color: "var(--fg-100)",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <div className="text-sm" style={{ fontWeight: 600 }}>{o.label}</div>
+                        <div className="text-xs muted">{o.d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button className="btn btn-accent btn-lg" onClick={handleStart} style={{ width: "100%", justifyContent: "center" }}>
+                  Create my pension
+                  <Icon name="arrow-right" size={16} />
+                </button>
+              </div>
             )}
-            {wallet && <p className="mono-sm muted" style={{ marginTop: 14 }}>connected · {shortAddr(wallet)}</p>}
 
             <div className="row gap-4" style={{ marginTop: 32, justifyContent: "center", flexWrap: "wrap" }}>
               <span className="mono-sm muted">OKX Wallet · MetaMask</span>
               <span className="mono-sm muted">3% auto-save</span>
               <span className="mono-sm muted">no minimums</span>
             </div>
+
+            <p className="text-xs muted" style={{ maxWidth: 520, marginInline: "auto", marginTop: 20 }}>
+              A moment after you connect: your wallet signs one small transaction to open your pension
+              vault (testnet gas is free from the{" "}
+              <a href="https://www.okx.com/xlayer/faucet/xlayerfaucet" target="_blank" rel="noreferrer" style={{ color: "var(--accent-100)" }}>
+                X Layer faucet
+              </a>
+              ). Keep this browser on Testnet while you explore.
+            </p>
 
             <div
               className="row border rounded"
