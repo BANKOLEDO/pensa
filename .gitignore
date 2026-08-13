@@ -12,6 +12,7 @@ artifacts/
 cache/
 frontend/dist/
 *.tsbuildinfo
+*.timestamp-*.mjs
 
 # Secrets — never commit these
 .env
