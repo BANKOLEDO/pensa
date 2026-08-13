@@ -30,8 +30,10 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     admin_chat_id: str = ""
 
-    # Cross-origin for the Vite dev server + production domain.
-    cors_origins: str = "*"
+    # Required for agent-signed writes in every env; unset = routes 503 (fail closed).
+    admin_token: str = ""
+
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
 
     class Config:
         env_file = ROOT / ".env"
@@ -50,6 +52,10 @@ class Settings(BaseSettings):
         if self.app_env == "staging":
             return self.x_layer_testnet_rpc
         return self.x_layer_rpc
+
+    @property
+    def cors_origin_list(self) -> list:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     def load_deployments(self) -> dict:
         """Addresses written by scripts/deploy.js for the current env."""

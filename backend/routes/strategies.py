@@ -7,9 +7,10 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from ..models import ApplyStrategyRequest, RecommendRequest
+from ..utils.auth import require_admin
 from ..utils.xlayer_client import CLIENT
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -88,7 +89,7 @@ def current_strategy(user: str, network: Optional[str] = Query(None, description
 
 
 @router.post("/apply")
-def apply_strategy(body: ApplyStrategyRequest, network: Optional[str] = Query(None, description="testnet | mainnet")):
+def apply_strategy(body: ApplyStrategyRequest, network: Optional[str] = Query(None, description="testnet | mainnet"), _admin=Depends(require_admin)):
     """Compute the AI recommendation and store its hash on the vault."""
     recommend_body = RecommendRequest(
         user=body.user,

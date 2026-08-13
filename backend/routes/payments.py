@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from ..models import ForwardPaymentRequest, X402PaymentRequest
 from ..config import get_settings
+from ..utils.auth import require_admin
 from ..utils.x402_handler import (
     EXPECT_HEADER, SEND_HEADER, SIGNATURE_HEADER, build_meta, build_payment_url,
     parse_payment, verify_payment,
@@ -58,7 +59,7 @@ def x402_meta(request: Request, network: Optional[str] = Query(None, description
 
 
 @router.post("/x402")
-def receive_x402(body: X402PaymentRequest, request: Request, network: Optional[str] = Query(None, description="testnet | mainnet")):
+def receive_x402(body: X402PaymentRequest, request: Request, network: Optional[str] = Query(None, description="testnet | mainnet"), _admin=Depends(require_admin)):
     """x402 webhook — verify the signed payment intent, then auto-allocate."""
     intent = parse_payment(body.model_dump())
 
@@ -88,7 +89,7 @@ def receive_x402(body: X402PaymentRequest, request: Request, network: Optional[s
 
 
 @router.post("/auto")
-def auto_allocate(body: ForwardPaymentRequest, network: Optional[str] = Query(None, description="testnet | mainnet")):
+def auto_allocate(body: ForwardPaymentRequest, network: Optional[str] = Query(None, description="testnet | mainnet"), _admin=Depends(require_admin)):
     """Simulate/execute an incoming payout and route allocationPercent to the vault."""
     captured = CLIENT.forward_payment(body.user, body.asset, body.amount, network)
     if captured is None:
