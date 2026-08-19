@@ -55,6 +55,7 @@ cp .env.example .env
 |-----|---------|-----------|
 | `APP_ENV=dev` | Runs everything in offline SIMULATION (in-memory vaults, demo data) | local demo |
 | `APP_ENV=staging` | Talks to the X Layer **testnet** (chain 1952) | testnet testing |
+| `ADMIN_TOKEN` | Required — agent write auth; also `frontend/.env` `VITE_ADMIN_TOKEN` for local dev | agent writes |
 | `DEPLOYER_PRIVATE_KEY` | Wallet that deploys contracts (needs testnet OKB gas) | deploy/seed |
 | `AGENT_PRIVATE_KEY` | Wallet the AI agent signs txs with | staging on-chain |
 | `HUGGINGFACE_API_KEY` | Optional — LLM analysis (falls back to rules without it) | AI quality |
@@ -128,10 +129,16 @@ the Telegram bot runs in the same container. One URL is enough for the whole
 product — no CORS, no cross-origin RPC. It listens on `$PORT` (injected by the
 platform; default `7860`).
 
+> **ADMIN_TOKEN (required).** Agent-signed write routes (vault create, payout,
+> strategy apply) fail closed unless a matching token is configured on both
+> sides. Pass the **same value** twice: as a build arg (baked into the SPA as
+> `VITE_ADMIN_TOKEN`) and as a runtime secret (backend `ADMIN_TOKEN`). Generate
+> one with `python -c "import secrets; print(secrets.token_urlsafe(32))"`.
+
 ```bash
-docker build -t pensa . && docker run -d -p 7860:7860 \
-  -v "$PWD/.env:/app/.env:ro" \
-  -e TELEGRAM_BOT_TOKEN="$TELEGRAM_BOT_TOKEN" pensa
+docker build --build-arg ADMIN_TOKEN="$ADMIN_TOKEN" -t pensa . && docker run -d \
+  -p 7860:7860 -v "$PWD/.env:/app/.env:ro" \
+  -e ADMIN_TOKEN="$ADMIN_TOKEN" pensa
 ```
 
 Set these as environment variables in the target platform (Render → the service's
@@ -141,10 +148,16 @@ and not copied):
 | Variable | Notes |
 |----------|-------|
 | `APP_ENV` | `staging` (testnet) or `prod` (mainnet) |
+| `ADMIN_TOKEN` | **required** — agent write auth; must equal the build arg |
 | `DEPLOYER_PRIVATE_KEY`, `AGENT_PRIVATE_KEY` | needed for on-chain write flows |
 | `HUGGINGFACE_API_KEY` | optional, improves AI; rules fallback without it |
 | `TELEGRAM_BOT_TOKEN` | optional — starts the Telegram bot when set |
 | `SERVE_SPA` | `0` to disable SPA serving if you mount the UI elsewhere |
+
+> **On Render**, pass `ADMIN_TOKEN` as a **Build-time Environment Variable** in
+> addition to the runtime secret — Render doesn't expose `--build-arg`, so set
+> it under the service's Build → Environment, and the web stage will bake it
+> into the SPA.
 
 **Zero-cost hosting (recommended for judging):**
 - **Render free web service** — Deploy → New → Web Service → connect to the
@@ -176,7 +189,8 @@ and not copied):
 4. Live payout routes:
    - **Add demo payout** button on the dashboard (or
      `POST {URL}/payments/auto` `{"user":"0x…","asset":"USDC","amount":1000}`) →
-     allocates 3% into the vault (real testnet tx; agent signs).
+     allocates 3% into the vault (real testnet tx; agent signs). Protected
+     routes expect `X-PENSA-ADMIN: <token>`.
    - `GET {URL}/payments/x402/meta` → x402 payment rail discovery.
 5. AI on demand: `POST {URL}/strategies/recommend` returns live market yields
    (RWA/DeFi/stables), the resulting allocations, and `expectedApr` — even with
