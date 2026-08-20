@@ -1,7 +1,7 @@
 import { API_URL } from "./format";
 import { DEMO_CONFIG, DEMO_STRATEGY, DEMO_VAULTS, DEMO_USER } from "../data/mock";
 import type { NetworkId } from "./chains";
-import type { PaymentResult, StrategyRecommendation, SystemConfig, Vault } from "./types";
+import type { MarketSnapshot, PaymentResult, StrategyRecommendation, SystemConfig, Vault } from "./types";
 
 /** True when the backend answered; false -> UI falls back to demo data. */
 export const backendLive = { value: false };
@@ -121,6 +121,14 @@ export async function recommendStrategy(
     });
   } catch {
     return { ...DEMO_STRATEGY, user };
+  }
+}
+
+export async function fetchMarketSnapshot(): Promise<MarketSnapshot | null> {
+  try {
+    return await json<MarketSnapshot>("/strategies/market/snapshot");
+  } catch {
+    return null;
   }
 }
 

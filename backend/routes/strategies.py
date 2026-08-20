@@ -74,6 +74,32 @@ def recommend(body: RecommendRequest, network: Optional[str] = Query(None, descr
     return {**result, "strategyHash": _hash_allocations(result["allocations"])}
 
 
+@router.get("/market/snapshot")
+def market_snapshot():
+    """Live market yields the AI agent reads (real DefiLlama data, no key).
+
+    Read-only and public so the dashboard can show the agent's live market
+    watch without re-running a full optimization. Returns the same snapshot
+    object the optimizer consumes, plus per-category counts.
+    """
+    from market_data import get_market_snapshot
+
+    market = get_market_snapshot()
+    counts = {
+        "rwa": len(market.get("rwa_yields", [])),
+        "defi": len(market.get("defi_yields", [])),
+        "stable": len(market.get("stable_rates", [])),
+    }
+    return {
+        "timestamp": market.get("timestamp"),
+        "is_fallback": market.get("is_fallback", False),
+        "counts": counts,
+        "rwa_yields": market.get("rwa_yields", [])[:8],
+        "defi_yields": market.get("defi_yields", [])[:8],
+        "stable_rates": market.get("stable_rates", [])[:8],
+    }
+
+
 @router.get("/{user}")
 def current_strategy(user: str, network: Optional[str] = Query(None, description="testnet | mainnet")):
     vault = CLIENT.get_vault(user, network)

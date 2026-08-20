@@ -71,6 +71,25 @@ export interface StrategyRecommendation {
   strategyHash?: string;
 }
 
+export interface MarketYield {
+  asset: string;
+  project: string;
+  chain: string;
+  apy: number;
+  tvlUsd: number;
+  category: "rwa" | "defi" | "stable";
+  pool: string;
+}
+
+export interface MarketSnapshot {
+  timestamp: number;
+  is_fallback: boolean;
+  counts: { rwa: number; defi: number; stable: number };
+  rwa_yields: MarketYield[];
+  defi_yields: MarketYield[];
+  stable_rates: MarketYield[];
+}
+
 export interface PaymentResult {
   paymentAmount: number;
   asset: string;

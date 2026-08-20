@@ -3,6 +3,9 @@ import { Link, Navigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { Icon } from "../components/Icon";
 import Donut from "../components/Donut";
+import MarketMonitor from "../components/MarketMonitor";
+import GrowthChart from "../components/GrowthChart";
+import AgentPipeline from "../components/AgentPipeline";
 import { EnvBadge } from "../components/Header";
 import { adjustAllocation, createVault, fetchSystemConfig, fetchVault, recommendStrategy, setActiveNetwork, simulatePayout } from "../lib/api";
 import { isLiveConfig, signCreateVault, signUpdateAllocation, signUpdateStrategy } from "../lib/pensa";
@@ -47,6 +50,8 @@ export default function Dashboard() {
   const [allocBps, setAllocBps] = useState(300);
   const [toast, setToast] = useState<Toast>(null);
   const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [agentActive, setAgentActive] = useState(false);
+  const [agentStep, setAgentStep] = useState(0);
   const [tourOpen, setTourOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => loadProfile());
   const [editingProfile, setEditingProfile] = useState(false);
@@ -130,6 +135,7 @@ export default function Dashboard() {
     (async () => {
       setLoading(true);
       const c = await fetchSystemConfig();
+      if (cancelled) return;
       const live = isLiveConfig(c);
       let v = await fetchVault(wallet);
       if (cancelled) return;
@@ -154,6 +160,7 @@ export default function Dashboard() {
       }
       setVault(v);
       setAllocBps(v.allocationPercent);
+      if (!cancelled) setLoading(false);
 
       const s = await recommendStrategy(wallet, { risk_tolerance: profileRef.current.risk_tolerance, age: profileRef.current.age, monthly_income: profileRef.current.monthly_income, retirement_age: profileRef.current.retirement_age });
 
@@ -261,14 +268,27 @@ export default function Dashboard() {
   const handleRefreshStrategy = async () => {
     if (!wallet) return;
     setBusy(true);
+    setAgentActive(true);
+    setAgentStep(0);
     try {
       const live = isLiveConfig(config);
+      const steps = [
+        "Reading live market yields…",
+        "Scoring pools across RWA · DeFi · stable",
+        "Balancing for your age and risk appetite…",
+        "Recording the portfolio hash on-chain…",
+      ];
       const s = await recommendStrategy(wallet, {
         risk_tolerance: userProfile.risk_tolerance,
         age: userProfile.age,
         monthly_income: userProfile.monthly_income,
         retirement_age: userProfile.retirement_age,
       });
+      // advance the pipeline as the AI does its work (the real call above runs async)
+      for (let i = 1; i <= steps.length; i++) {
+        setAgentStep(i);
+        await new Promise((r) => setTimeout(r, 500));
+      }
       if (live && s.strategyHash) {
         showToast("ok", "Apply strategy — confirm in your wallet…");
         await signUpdateStrategy(config!.factoryAddress, s.strategyHash, (h) => showToast("ok", `Strategy tx sent · ${shortAddr(h, 12)}`));
@@ -276,10 +296,15 @@ export default function Dashboard() {
       setStrategy(s);
       showToast("ok", "Strategy re-optimized");
       await refreshVault(wallet);
+      setFeed((f) => [
+        { icon: "spark", t: "AI strategy applied", d: `APR ${s.expectedApr.toFixed(2)}% · ${s.allocations.length} positions` },
+        ...f,
+      ]);
     } catch (e) {
       showToast("err", `Strategy failed: ${String(e).slice(0, 160)}`);
     } finally {
       setBusy(false);
+      setAgentActive(false);
     }
   };
 
@@ -352,6 +377,21 @@ export default function Dashboard() {
             <div className="text-xs muted">{c.sub}</div>
           </div>
         ))}
+      </div>
+
+      <div className="panel" style={{ marginTop: 18 }}>
+        <div className="panel-head">
+          <h3 className="heading heading-sm" style={{ margin: 0 }}>Portfolio growth</h3>
+          <span className="pill pill-accent">AI-projected</span>
+        </div>
+        <div className="panel-body">
+          <GrowthChart
+            total={vault?.totalValue ?? 0}
+            deposited={vault?.totalDeposited ?? 0}
+            apr={strategy?.expectedApr ?? 4.5}
+            yearsToRetirement={Math.max(0, userProfile.retirement_age - userProfile.age)}
+          />
+        </div>
       </div>
 
       <div
@@ -582,6 +622,18 @@ export default function Dashboard() {
         against the latest market yields.
       </p>
 
+      {agentActive && (
+        <AgentPipeline
+          steps={[
+            { id: "yields", label: "Reading live market yields…" },
+            { id: "score", label: "Scoring pools across RWA · DeFi · stable" },
+            { id: "balance", label: "Balancing for your age and risk appetite…" },
+            { id: "record", label: "Recording the portfolio hash on-chain…" },
+          ]}
+          activeIndex={agentStep}
+        />
+      )}
+
       <div className="stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {[
           { l: "Expected return", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}% APR`, sub: "aimed for this year" },
@@ -641,6 +693,8 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      <MarketMonitor live={config !== null && isLiveConfig(config)} />
     </>
     );
   };
