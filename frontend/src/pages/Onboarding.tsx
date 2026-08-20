@@ -108,9 +108,9 @@ export default function Onboarding() {
 
                 <div className="stack-2">
                   <div className="eyebrow accent-text">1 · About you</div>
-                  <div className="row" style={{ gap: 12, flexWrap: "wrap" }}>
-                    <label className="field" style={{ flex: "1 1 150px" }}>
-                      <span>Age</span>
+                  <div className="grid" style={{ gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+                    <label className="field">
+                      <span style={{ minHeight: "2.6em", display: "flex", alignItems: "center" }}>Age</span>
                       <input
                         type="number"
                         min={16}
@@ -119,8 +119,8 @@ export default function Onboarding() {
                         onChange={(e) => patch({ age: Number(e.target.value) || 16 })}
                       />
                     </label>
-                    <label className="field" style={{ flex: "1 1 150px" }}>
-                      <span>Monthly income ($)</span>
+                    <label className="field">
+                      <span style={{ minHeight: "2.6em", display: "flex", alignItems: "center" }}>Monthly income ($)</span>
                       <input
                         type="number"
                         min={0}
@@ -128,8 +128,8 @@ export default function Onboarding() {
                         onChange={(e) => patch({ monthly_income: Number(e.target.value) || 0 })}
                       />
                     </label>
-                    <label className="field" style={{ flex: "1 1 150px" }}>
-                      <span>Planned retirement age</span>
+                    <label className="field">
+                      <span style={{ minHeight: "2.6em", display: "flex", alignItems: "center" }}>Planned retirement age</span>
                       <input
                         type="number"
                         min={16}
