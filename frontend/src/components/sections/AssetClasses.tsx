@@ -1,10 +1,10 @@
-import { SectionTitle, Corners } from "../Deco";
+import { BorderedHead } from "../Deco";
 
 const ASSET_CLASSES = [
   {
     key: "rwa",
     tag: "RWA",
-    color: "#f5a400",
+    c: "var(--accent-100)",
     name: "Tokenized treasuries",
     apr: "4.9%",
     note: "real-world yield",
@@ -13,7 +13,7 @@ const ASSET_CLASSES = [
   {
     key: "defi",
     tag: "DeFi",
-    color: "#06b6d4",
+    c: "var(--teal-100)",
     name: "Blue-chip lending",
     apr: "5.2%",
     note: "protocol yields",
@@ -22,7 +22,7 @@ const ASSET_CLASSES = [
   {
     key: "stable",
     tag: "Stable",
-    color: "#00a46a",
+    c: "var(--green-100)",
     name: "Stable assets",
     apr: "3.5%",
     note: "capital preservation",
@@ -32,33 +32,28 @@ const ASSET_CLASSES = [
 
 export default function AssetClasses() {
   return (
-    <section className="section" id="assets" style={{ paddingTop: 0 }}>
+    <section className="section" id="assets">
       <div className="container">
-        <SectionTitle
-          eyebrow="Where your money grows"
+        <BorderedHead
+          n="02 / engines"
           title="Three engines of yield"
-          sub="Live rates are sampled from the market by the agent; the mix shifts with your risk profile."
+          sub="Live rates are sampled by the agent; the mix shifts with your risk profile."
         />
-        <div className="hairline-row rounded" style={{ position: "relative" }}>
-          <Corners />
+        <div className="ns-grid">
           {ASSET_CLASSES.map((a) => (
-            <div key={a.key} className="stack-4" style={{ flex: 1, minWidth: 0, padding: "clamp(28px, 3vw, 40px)" }}>
-              <span className="pill" style={{ borderColor: a.color, color: a.color, width: "fit-content" }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: a.color }} />
+            <div key={a.key} className="ns-cell ns-panel" style={{ background: "var(--bg-200)" }}>
+              <span className="ns-badge ns-badge-gold" style={{ borderColor: `color-mix(in srgb, ${a.c} 35%, transparent)`, color: a.c, background: `color-mix(in srgb, ${a.c} 10%, transparent)` }}>
+                <span className="dot" style={{ background: a.c }} />
                 {a.tag}
               </span>
-              <h3 className="heading heading-sm">{a.name}</h3>
-              <div>
-                <span className="mono" style={{ fontSize: "2rem", fontWeight: 600, letterSpacing: "-0.03em", color: a.color }}>
-                  {a.apr}
-                </span>
-                <span className="text-sm muted" style={{ marginLeft: 8 }}>{a.note}</span>
-              </div>
-              <div className="stack-2" style={{ marginTop: 8 }}>
+              <h3 className="heading-sm" style={{ marginTop: 14 }}>{a.name}</h3>
+              <div className="mono" style={{ fontSize: 26, fontWeight: 600, marginTop: 6, color: a.c }}>{a.apr}</div>
+              <div className="text-xs muted" style={{ marginBottom: 12 }}>{a.note}</div>
+              <div className="stack-2">
                 {a.rows.map(([n, y]) => (
-                  <div key={n} className="row space-between" style={{ borderBottom: "1px solid var(--border-100)", paddingBlock: 10 }}>
+                  <div key={n} className="ns-meta" style={{ paddingBlock: 7, borderTop: "1px dashed var(--border-200)" }}>
                     <span className="text-sm" style={{ color: "var(--fg-300)" }}>{n}</span>
-                    <span className="mono-sm">{y}</span>
+                    <span className="mono" style={{ color: a.c, fontSize: 13 }}>{y}</span>
                   </div>
                 ))}
               </div>
