@@ -11,17 +11,21 @@ import CtaBand from "../components/sections/CtaBand";
 
 export default function Landing() {
   return (
-    <div id="top">
-      <Header />
-      <Hero />
-      <TokenTicker />
-      <HowItWorks />
-      <Showcase />
-      <AssetClasses />
-      <SecurityBento />
-      <RiskProfiles />
-      <CtaBand />
-      <Footer />
+    <div id="top" className="landing-page">
+      <div className="landing-shell">
+        <Header />
+        <main>
+          <Hero />
+          <TokenTicker />
+          <HowItWorks />
+          <Showcase />
+          <AssetClasses />
+          <SecurityBento />
+          <RiskProfiles />
+        </main>
+        <CtaBand />
+        <Footer />
+      </div>
     </div>
   );
 }
