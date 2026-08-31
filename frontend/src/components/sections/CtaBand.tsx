@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Corners, Reveal } from "../Deco";
+import { Reveal } from "../Deco";
 import { Icon } from "../Icon";
 import { useWallet } from "../../lib/wallet";
 
@@ -21,29 +21,37 @@ export default function CtaBand() {
       <div className="container-narrow">
         <Reveal>
           <div
-            className="rounded-xl"
+            className="ns-dotgrid cta-band"
             style={{
-              background: "var(--accent-100)",
-              padding: "clamp(40px, 6vw, 72px)",
+              border: "1px solid var(--border-200)",
+              borderRadius: 16,
+              padding: "clamp(28px, 4vw, 56px)",
               textAlign: "center",
-              color: "#171c26",
               position: "relative",
+              overflow: "hidden",
             }}
           >
-            <Corners />
-            <h2 className="title" style={{ maxWidth: 640, marginInline: "auto", marginBottom: 16 }}>
-              Start your pension in 60 seconds.
-            </h2>
-            <p
-              className="text-lg"
-              style={{ color: "rgba(23,28,38,0.72)", maxWidth: 520, marginInline: "auto", marginBottom: 32 }}
-            >
-              No paperwork, no minimums, no manager. Just your wallet and a 3% habit.
-            </p>
-            <Link to={wallet ? "/app" : "/app/onboard"} className="btn btn-dark btn-lg">
-              Open the dashboard
-              <Icon name="arrow-right" size={16} />
-            </Link>
+            <div
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "radial-gradient(circle at 50% 0%, color-mix(in srgb, currentColor 12%, transparent), transparent 60%)",
+                pointerEvents: "none",
+              }}
+            />
+            <div style={{ position: "relative" }}>
+              <h2 className="title" style={{ maxWidth: 640, marginInline: "auto", marginBottom: 12, color: "currentColor" }}>
+                Start your pension in 60 seconds.
+              </h2>
+              <p className="text muted" style={{ maxWidth: 520, marginInline: "auto", marginBottom: 24, color: "color-mix(in srgb, currentColor 65%, transparent)" }}>
+                No paperwork, no minimums, no manager. Just your wallet and a 3% habit.
+              </p>
+              <Link to={wallet ? "/app" : "/app/onboard"} className="btn" style={{ background: "var(--bg-100)", color: "var(--fg-100)", borderColor: "var(--bg-100)" }}>
+                Open the dashboard
+                <Icon name="arrow-right" size={16} />
+              </Link>
+            </div>
           </div>
         </Reveal>
 

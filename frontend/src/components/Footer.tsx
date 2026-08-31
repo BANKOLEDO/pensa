@@ -57,8 +57,14 @@ export default function Footer() {
             flexWrap: "wrap",
           }}
         >
-          <span className="mono-sm muted">
-            © {new Date().getFullYear()} PENSA Protocol · Built for BuildX AI Season
+          <span className="row gap-3" style={{ gap: 16, flexWrap: "wrap" }}>
+            <span className="row gap-2" style={{ gap: 8 }}>
+              <span className="status-dot status-dot-live" />
+              <span className="mono-sm" style={{ color: "var(--green-100)" }}>vaults live on X Layer</span>
+            </span>
+            <span className="mono-sm muted">
+              © {new Date().getFullYear()} PENSA Protocol · Built for BuildX AI Season
+            </span>
           </span>
           <div className="row gap-4">
             <a
