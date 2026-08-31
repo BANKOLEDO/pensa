@@ -12,9 +12,9 @@ export function Mark({ size = 24, light }: { size?: number; light?: boolean }) {
       />
       <path
         d="M12 7l4 1.6v3.2c0 3-1.9 5.6-4 6.6-2.1-1-4-3.6-4-6.6V8.6L12 7Z"
-        fill={light ? "var(--accent-300)" : "var(--navy-100)"}
+        fill={light ? "#0a0a0a" : "var(--bg-100)"}
       />
-      <circle cx="12" cy="11.6" r="1.7" fill="#fff" />
+      <circle cx="12" cy="11.6" r="1.7" fill={light ? "#fff" : "var(--accent-100)"} />
     </svg>
   );
 }
@@ -36,9 +36,9 @@ export function Logo({ light, className }: LogoProps) {
         />
         <path
           d="M12 7l4 1.6v3.2c0 3-1.9 5.6-4 6.6-2.1-1-4-3.6-4-6.6V8.6L12 7Z"
-          fill={light ? "var(--accent-300)" : "var(--navy-100)"}
+          fill={light ? "#0a0a0a" : "var(--bg-100)"}
         />
-        <circle cx="12" cy="11.6" r="1.7" fill="#fff" />
+        <circle cx="12" cy="11.6" r="1.7" fill={light ? "#fff" : "var(--accent-100)"} />
       </svg>
       <span style={{ letterSpacing: "-0.02em" }}>PENSA</span>
     </span>
