@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { Logo } from "../components/Logo";
 import { Icon } from "../components/Icon";
+import AppPage from "../components/AppPage";
+import { useTheme } from "../lib/theme";
 import Donut from "../components/Donut";
 import MarketMonitor from "../components/MarketMonitor";
 import GrowthChart from "../components/GrowthChart";
@@ -40,6 +42,7 @@ const SIDE_NAV: { key: TabKey; label: string; icon: "chart" | "layers" | "spark"
 
 export default function Dashboard() {
   const { wallet, network, disconnect } = useWallet();
+  const { theme, toggle: toggleTheme } = useTheme();
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [vault, setVault] = useState<Vault | null>(null);
   const [strategy, setStrategy] = useState<StrategyRecommendation | null>(null);
@@ -352,7 +355,7 @@ export default function Dashboard() {
     <>
       <div className="row space-between" style={{ flexWrap: "wrap", gap: 16 }}>
         <div className="stack-2">
-          <div className="eyebrow muted">Your pension vault</div>
+          <div className="ns-eyebrow">PENSA / {vault?.name ?? "Pension vault"}</div>
           <h1 className="heading heading-lg">{vault?.name ?? "Pension vault"}</h1>
         </div>
         <Link to="/" className="btn btn-ghost btn-sm">
@@ -361,20 +364,21 @@ export default function Dashboard() {
         </Link>
       </div>
 
-      <div className="stat-grid" id="tour-stats">
+      <div className="ns-grid ns-grid-5" id="tour-stats" style={{ background: "var(--bg-200)" }}>
         {[
-          { l: "Total value", v: usd(vault?.totalValue ?? 0), sub: vault?.simulated ? "simulated" : "saved so far" },
-          { l: "Deposited", v: usd(vault?.totalDeposited ?? 0), sub: `${fmtBps(allocBps)} auto-saved from payouts` },
-          { l: "Returns", v: usd(vault?.totalReturns ?? 0), sub: `+${(vault?.growthPct ?? 0).toFixed(2)}% earned` },
-          { l: "Expected APR", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}%`, sub: "AI-targeted this year" },
+          { l: "Total value", v: usd(vault?.totalValue ?? 0), sub: vault?.simulated ? "simulated" : "saved so far", c: "var(--fg-100)" },
+          { l: "Deposited", v: usd(vault?.totalDeposited ?? 0), sub: `${fmtBps(allocBps)} auto-saved from payouts`, c: "var(--teal-100)" },
+          { l: "Returns", v: usd(vault?.totalReturns ?? 0), sub: `+${(vault?.growthPct ?? 0).toFixed(2)}% earned`, c: "var(--green-100)" },
+          { l: "Expected APR", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}%`, sub: "AI-targeted this year", c: "var(--accent-100)" },
+          { l: "Next rebalance", v: "6h", sub: "agent schedule · auto", c: "var(--purple-100)" },
         ].map((c) => (
-          <div className="stat" key={c.l}>
-            <div className="stat-label">
-              {c.l}
-              <Icon name="chart" size={13} className="accent-text" />
+          <div className="ns-cell" key={c.l} style={{ background: "var(--bg-200)" }}>
+            <div className="row gap-2" style={{ gap: 8, marginBottom: 8 }}>
+              <span className="ns-metric-label" style={{ fontSize: 11 }}>{c.l}</span>
+              {c.l === "Expected APR" && <span className="status-dot status-dot-live" />}
             </div>
-            <div className="stat-value">{c.v}</div>
-            <div className="text-xs muted">{c.sub}</div>
+            <div className="mono" style={{ fontSize: 22, fontWeight: 600, color: c.c, lineHeight: 1.1 }}>{c.v}</div>
+            <div className="text-xs muted" style={{ marginTop: 6 }}>{c.sub}</div>
           </div>
         ))}
       </div>
@@ -552,7 +556,7 @@ export default function Dashboard() {
   const renderHoldings = () => (
     <>
       <div className="stack-2" style={{ marginBottom: 8 }}>
-        <div className="eyebrow muted">Your pension vault</div>
+        <div className="ns-eyebrow">PENSA / pension vault</div>
         <h1 className="heading heading-lg">Holdings</h1>
       </div>
 
@@ -607,7 +611,7 @@ export default function Dashboard() {
     <>
       <div className="row space-between" style={{ flexWrap: "wrap", gap: 16 }}>
         <div className="stack-2">
-          <div className="eyebrow muted">AI allocation engine</div>
+          <div className="ns-eyebrow">PENSA / AI allocation engine</div>
           <h1 className="heading heading-lg">Strategy</h1>
         </div>
         <button className="btn btn-ghost btn-sm" onClick={handleRefreshStrategy} disabled={busy}>
@@ -634,15 +638,15 @@ export default function Dashboard() {
         />
       )}
 
-      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
         {[
-          { l: "Expected return", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}% APR`, sub: "aimed for this year" },
-          { l: "Risk appetite", v: `${riskPct}/100`, sub: `a ${riskDesc} approach` },
-          { l: "Your profile", v: profile ? `${profile.age} yrs · retires at ${profile.retirement_age}` : "—", sub: `income ${usd(profile?.monthly_income ?? 0, 0)}/mo` },
+          { l: "Expected return", v: `${(strategy?.expectedApr ?? 0).toFixed(2)}% APR`, sub: "aimed for this year", c: "var(--accent-100)" },
+          { l: "Risk appetite", v: `${riskPct}/100`, sub: `a ${riskDesc} approach`, c: "var(--violet, var(--purple-100))" },
+          { l: "Your profile", v: profile ? `${profile.age} yrs · retires at ${profile.retirement_age}` : "—", sub: `income ${usd(profile?.monthly_income ?? 0, 0)}/mo`, c: "var(--teal-100)" },
         ].map((c) => (
           <div className="stat" key={c.l}>
             <div className="stat-label">{c.l}</div>
-            <div className="stat-value">{c.v}</div>
+            <div className="stat-value" style={{ color: c.c }}>{c.v}</div>
             <div className="text-xs muted">{c.sub}</div>
           </div>
         ))}
@@ -661,7 +665,7 @@ export default function Dashboard() {
             <ul className="text-sm muted" style={{ margin: "10px 0 0", paddingLeft: 18 }}>
               <li><span style={{ color: "var(--green-100)" }}>Stable assets</span> — cash-like, steady floor for your savings</li>
               <li><span style={{ color: "var(--accent-100)" }}>Tokenized treasuries (RWA)</span> — real-world government bonds, higher yield</li>
-              <li><span style={{ color: "var(--blue-100)" }}>DeFi lending pools</span> — higher-return lending. {dataNote}.</li>
+              <li><span style={{ color: "var(--purple-100)" }}>DeFi lending pools</span> — higher-return lending. {dataNote}.</li>
             </ul>
           </div>
 
@@ -702,7 +706,7 @@ export default function Dashboard() {
   const renderActivity = () => (
     <>
       <div className="stack-2" style={{ marginBottom: 8 }}>
-        <div className="eyebrow muted">Your pension vault</div>
+        <div className="ns-eyebrow">PENSA / pension vault</div>
         <h1 className="heading heading-lg">Activity</h1>
       </div>
 
@@ -732,7 +736,7 @@ export default function Dashboard() {
   const renderSettings = () => (
     <>
       <div className="stack-2" style={{ marginBottom: 8 }}>
-        <div className="eyebrow muted">Your pension vault</div>
+        <div className="ns-eyebrow">PENSA / pension vault</div>
         <h1 className="heading heading-lg">Settings</h1>
       </div>
 
@@ -925,18 +929,26 @@ export default function Dashboard() {
   };
 
   return (
-    <div>
+    <AppPage>
       {/* top bar */}
       <header className="nav">
         <div className="container nav-inner">
           <Link to="/" style={{ display: "inline-flex" }}>
             <Logo />
           </Link>
-          <div className="nav-cta">
-            <EnvBadge env={config?.env ?? "dev"} live={!!config && !config.simulated} />
+          <div className="nav-cta" style={{ gap: 6 }}>
+            <button
+              className="theme-toggle"
+              onClick={toggleTheme}
+              aria-label="Toggle theme"
+              title="Toggle theme"
+            >
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+            </button>
+            <EnvBadge env={config?.env ?? "dev"} live={!!config && !config.simulated} className="hidden md:inline-flex" />
             <button className="btn btn-ghost btn-sm" onClick={() => setTourOpen(true)} title="Guided tour">
               <Icon name="spark" size={15} />
-              Tour
+              <span className="hidden sm:inline">Tour</span>
             </button>
             <button className="btn btn-ghost btn-sm" onClick={handleDisconnect} title="Disconnect">
               <Icon name="wallet" size={15} />
@@ -953,13 +965,19 @@ export default function Dashboard() {
           {/* sidebar */}
           <aside className="dash-side">
             {SIDE_NAV.map((n) => (
-              <button key={n.key} className={`dash-nav ${n.key === tab ? "active" : ""}`} onClick={() => setTab(n.key)}>
+              <button key={n.key} className={`ns-rail ${n.key === tab ? "active" : ""}`} onClick={() => setTab(n.key)}>
                 <Icon name={n.icon} size={17} />
                 {n.label}
               </button>
             ))}
-            <div className="border-t" style={{ marginTop: "auto" }}>
-              <Link to="/" className="dash-nav">
+            <div className="ns-route" style={{ marginTop: 20, paddingLeft: 12 }}>
+              <p className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-400)" }}>Control plane</p>
+              <p className="text-xs" style={{ marginTop: 4, color: "var(--fg-400)" }}>
+                Your vault, strategy, and on-chain proof.
+              </p>
+            </div>
+            <div className="border-t" style={{ marginTop: "auto", paddingTop: 12 }}>
+              <Link to="/" className="ns-rail">
                 <Icon name="logout" size={17} />
                 Back to site
               </Link>
@@ -996,6 +1014,6 @@ export default function Dashboard() {
       )}
 
       <Tour steps={TOUR_STEPS} open={tourOpen} onStep={handleTourStep} onClose={closeTour} />
-    </div>
+    </AppPage>
   );
 }
