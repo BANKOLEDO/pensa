@@ -3,20 +3,13 @@ import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
 import { Icon } from "./Icon";
 import { useWallet } from "../lib/wallet";
+import { useTheme } from "../lib/theme";
 
-export function EnvBadge({ env = "dev", live = false }: { env?: string; live?: boolean }) {
+export function EnvBadge({ env = "dev", live = false, className = "" }: { env?: string; live?: boolean; className?: string }) {
   const sim = !live || env === "dev";
   return (
-    <span className={`pill ${sim ? "pill-green" : "pill-navy"}`}>
-      <span
-        style={{
-          width: 6,
-          height: 6,
-          borderRadius: "50%",
-          background: sim ? "var(--green-100)" : "#fff",
-          flex: "none",
-        }}
-      />
+    <span className={`ns-badge ns-badge-green ${className}`}>
+      <span className="dot" />
       {sim ? "Simulation · dev" : env === "prod" ? "X Layer mainnet" : "X Layer testnet"}
     </span>
   );
@@ -33,6 +26,7 @@ const SECTION_IDS = ["how", "assets", "risk", "security"];
 
 export default function Header() {
   const { wallet } = useWallet();
+  const { theme, toggle } = useTheme();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [active, setActive] = useState("");
@@ -70,80 +64,93 @@ export default function Header() {
 
   return (
     <header
-      className={`sticky top-0 z-50 border-b border-line bg-base/85 backdrop-blur-lg transition-shadow ${
-        scrolled ? "shadow-[0_10px_28px_rgba(0,0,0,0.4)]" : ""
-      }`}
+      className="sticky top-0 z-50"
+      style={{ padding: "clamp(10px, 1.6vw, 22px) clamp(12px, 2vw, 28px) 0", transition: "padding 180ms ease" }}
     >
-      <div className="mx-auto flex h-16 max-w-[1480px] items-center justify-between gap-4 px-4 sm:px-6 lg:px-10">
-        <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="PENSA home" className="flex flex-none items-center">
-          <Logo />
-        </a>
+      <div
+        className="ns-dotgrid"
+        style={{
+          maxWidth: 1360,
+          marginInline: "auto",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          height: 52,
+          paddingInline: "14px 16px",
+          border: "1px solid var(--border-200)",
+          borderRadius: 14,
+          background: "color-mix(in srgb, var(--bg-100) 86%, transparent)",
+          backdropFilter: "blur(12px)",
+          boxShadow: scrolled ? "0 10px 30px rgba(0,0,0,0.28)" : "0 4px 14px rgba(0,0,0,0.12)",
+          transition: "box-shadow 180ms ease",
+        }}
+      >
+        <div className="flex flex-none items-center gap-7">
+          <a href="#top" onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: "smooth" }); }} aria-label="PENSA home" className="flex flex-none items-center">
+            <Logo />
+          </a>
 
-        {/* desktop links */}
-        <nav className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((l) => {
-            const isActive = active === l.href.slice(1);
-            return (
-              <a
-                key={l.href}
-                href={`#${l.href.slice(1)}`}
-                onClick={scrollTo(l.href.slice(1))}
-                className={`group relative rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-surface hover:text-ink ${
-                  isActive ? "text-ink" : "text-ink3"
-                }`}
-              >
-                {l.label}
-                <span
-                  className={`absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-gold transition-opacity ${
-                    isActive ? "opacity-100" : "opacity-0 group-hover:opacity-70"
-                  }`}
-                />
-              </a>
-            );
-          })}
-        </nav>
+          {/* desk links — left-aligned segmented rail */}
+          <nav className="hidden items-center gap-1 lg:flex" style={{ border: "1px solid var(--border-200)", borderRadius: 999, padding: 3, background: "color-mix(in srgb, var(--bg-300) 60%, transparent)" }}>
+            {LINKS.map((l) => {
+              const isActive = active === l.href.slice(1);
+              return (
+                <a
+                  key={l.href}
+                  href={`#${l.href.slice(1)}`}
+                  onClick={scrollTo(l.href.slice(1))}
+                  className={isActive ? "nav-pill active" : "nav-pill"}
+                >
+                  {l.label}
+                </a>
+              );
+            })}
+          </nav>
+        </div>
 
         <div className="flex items-center gap-2.5">
+          <button
+            className="theme-toggle"
+            onClick={toggle}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            <Icon name={theme === "dark" ? "sun" : "moon"} size={17} />
+          </button>
           <Link
             to={appRoute}
-            className="hidden items-center gap-1.5 rounded-md bg-gold px-4 py-2 text-sm font-semibold text-[#171c26] transition-colors hover:bg-gold-deep sm:inline-flex"
+            className="btn btn-accent btn-sm hidden sm:inline-flex"
           >
             Open dashboard
             <Icon name="arrow-right" size={14} />
           </Link>
           <button
-            className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-line2 text-ink2 transition-colors hover:border-line3 hover:text-ink lg:hidden"
+            className="theme-toggle lg:hidden"
             onClick={() => setOpen(!open)}
             aria-label="Menu"
             aria-expanded={open}
           >
-            <Icon name={open ? "x" : "menu"} size={18} />
+            <Icon name={open ? "x" : "menu"} size={17} />
           </button>
         </div>
       </div>
 
       {/* mobile drawer */}
       {open && (
-        <div className="absolute inset-x-0 top-full border-b border-line bg-base/95 pb-4 pt-1 backdrop-blur-lg lg:hidden">
-          {LINKS.map((l) => (
-            <a
-              key={l.href}
-              href={`#${l.href.slice(1)}`}
-              onClick={scrollTo(l.href.slice(1))}
-              className="block rounded-md px-5 py-3 text-[15px] font-medium text-ink3 transition-colors hover:bg-surface hover:text-ink"
-            >
-              {l.label}
-            </a>
-          ))}
-          <div className="px-4 pt-3">
-            <Link
-              to={appRoute}
-              onClick={() => setOpen(false)}
-              className="flex items-center justify-center gap-1.5 rounded-md bg-gold px-4 py-3 text-sm font-semibold text-[#171c26] transition-colors hover:bg-gold-deep"
-            >
-              Open dashboard
-              <Icon name="arrow-right" size={14} />
-            </Link>
+        <div className="lg:hidden ns-dotgrid" style={{ maxWidth: 1360, marginInline: "auto", marginTop: 8, border: "1px solid var(--border-200)", borderRadius: 14, background: "var(--bg-100)", overflow: "hidden" }}>
+          <div className="px-4 py-2">
+            {LINKS.map((l) => (
+              <a
+                key={l.href}
+                href={`#${l.href.slice(1)}`}
+                onClick={scrollTo(l.href.slice(1))}
+                className="block py-3"
+                style={{ color: "var(--fg-200)", borderBottom: "1px solid var(--border-100)" }}
+              >
+                {l.label}
+              </a>
+            ))}
           </div>
         </div>
       )}
