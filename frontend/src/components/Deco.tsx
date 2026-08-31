@@ -92,17 +92,17 @@ export function SectionTitle({
 }) {
   return (
     <div
-      className="stack-4"
+      className="stack-3"
       style={{
         maxWidth: 760,
         marginInline: "auto",
         textAlign: "center",
-        marginBottom: "clamp(40px, 6vw, 64px)",
+        marginBottom: "clamp(28px, 4vw, 44px)",
       }}
     >
-      <div className="eyebrow accent-text">{eyebrow}</div>
+      <div className="ns-eyebrow" style={{ justifyContent: "center" }}>{eyebrow}</div>
       <h2 className="title">{title}</h2>
-      {sub && <p className="text-lg muted">{sub}</p>}
+      {sub && <p className="text muted">{sub}</p>}
     </div>
   );
 }
@@ -118,9 +118,9 @@ export function BorderedHead({
   sub?: ReactNode;
 }) {
   return (
-    <div className="stack-3" style={{ marginBottom: 36 }}>
+    <div className="stack-3" style={{ marginBottom: 24 }}>
       <div className="row gap-3">
-        {n && <span className="mono-sm muted">{n}</span>}
+        {n && <span className="ns-eyebrow">{n}</span>}
         <h2 className="heading heading-lg">{title}</h2>
       </div>
       {sub && (

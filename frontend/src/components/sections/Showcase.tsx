@@ -11,16 +11,16 @@ const DEMO_FLOW = [
 ];
 
 const PROOF = [
-  { icon: "terminal" as const, t: "Agent log", d: "Every decision, human-readable." },
-  { icon: "doc" as const, t: "Strategy hash", d: "On-chain, auditable." },
-  { icon: "shield" as const, t: "Factory vault", d: "EIP-1167, ~90k gas." },
-  { icon: "globe" as const, t: "X Layer testnet", d: "Chain 196, faucet gas." },
+  { icon: "terminal" as const, t: "Agent log", d: "Every decision, human-readable.", c: "var(--purple-100)" },
+  { icon: "doc" as const, t: "Strategy hash", d: "On-chain, auditable.", c: "var(--green-100)" },
+  { icon: "shield" as const, t: "Factory vault", d: "EIP-1167, ~90k gas.", c: "var(--teal-100)" },
+  { icon: "globe" as const, t: "X Layer testnet", d: "Chain 196, faucet gas.", c: "var(--accent-100)" },
 ];
 
 export default function Showcase() {
   const { wallet } = useWallet();
   return (
-    <section className="section" id="showcase" style={{ paddingTop: 0 }}>
+    <section className="section" id="showcase">
       <div className="container">
         <div className="row" style={{ alignItems: "flex-end", justifyContent: "space-between", gap: 20, marginBottom: "clamp(36px, 5vw, 56px)", flexWrap: "wrap" }}>
           <div className="stack-3" style={{ maxWidth: 640 }}>
@@ -75,7 +75,7 @@ export default function Showcase() {
               <div className="hairline-row" style={{ marginTop: 28 }}>
                 {PROOF.map((p) => (
                   <div key={p.t} className="stack-2" style={{ flex: 1, padding: "18px clamp(14px, 2vw, 22px)" }}>
-                    <Icon name={p.icon} size={15} className="accent-text" />
+                    <Icon name={p.icon} size={15} style={{ color: p.c }} />
                     <div className="text-sm" style={{ fontWeight: 600 }}>{p.t}</div>
                     <div className="text-sm muted">{p.d}</div>
                   </div>
