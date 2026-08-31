@@ -32,9 +32,14 @@ const ARC_PAIRS: [number, number][] = [
 ];
 
 const R = 1.7;
-const ACCENT = "#f5a400";
-const TEAL = "#06b6d4";
-const DIM = "#d8c98f";
+
+function themeColors(): { accent: string; line: string } {
+  if (typeof window === "undefined") return { accent: "#ffffff", line: "#666666" };
+  const cs = getComputedStyle(document.documentElement);
+  const accent = (cs.getPropertyValue("--accent-100") || "#ffffff").trim();
+  const line = (cs.getPropertyValue("--globe-line") || "#666666").trim();
+  return { accent, line };
+}
 
 function wc(lat: number, lon: number, r: number): THREE.Vector3 {
   const phi = ((90 - lat) * Math.PI) / 180;
@@ -76,7 +81,9 @@ interface Arc {
   phase: number;
 }
 
-function buildArcs(): { arcs: Arc[]; dispose: () => void } {
+const ARC_TEAL = "#06b6d4";
+
+function buildArcs(accent: string): { arcs: Arc[]; dispose: () => void } {
   const arcs: Arc[] = [];
   const disposables: { dispose: () => void }[] = [];
   ARC_PAIRS.forEach(([a, b], i) => {
@@ -91,7 +98,7 @@ function buildArcs(): { arcs: Arc[]; dispose: () => void } {
     const curve = new THREE.QuadraticBezierCurve3(p0, mid, p1);
     const geo = new THREE.TubeGeometry(curve, 56, 0.0038, 6, false);
     const mat = new THREE.MeshBasicMaterial({
-      color: i % 2 ? TEAL : ACCENT,
+      color: i % 2 ? ARC_TEAL : accent,
       transparent: true,
       opacity: 0.55,
     });
@@ -119,18 +126,43 @@ export default function PensionGlobe() {
     group.rotation.x = 0.12;
     scene.add(group);
 
-    const graticule = new THREE.Points(
-      buildGraticule(),
-      new THREE.PointsMaterial({ color: DIM, size: 0.014, transparent: true, opacity: 0.55, sizeAttenuation: true })
-    );
-    const nodes = new THREE.Points(
-      buildNodes(),
-      new THREE.PointsMaterial({ color: ACCENT, size: 0.035, transparent: true, opacity: 0.95, sizeAttenuation: true })
-    );
+    const graticuleMat = new THREE.PointsMaterial({
+      color: "",
+      size: 0.018,
+      transparent: true,
+      opacity: 0.85,
+      sizeAttenuation: true,
+    });
+    const nodesMat = new THREE.PointsMaterial({
+      color: "",
+      size: 0.035,
+      transparent: true,
+      opacity: 0.95,
+      sizeAttenuation: true,
+    });
+    const graticule = new THREE.Points(buildGraticule(), graticuleMat);
+    const nodes = new THREE.Points(buildNodes(), nodesMat);
     group.add(graticule, nodes);
 
-    const { arcs, dispose: disposeArcs } = buildArcs();
+    const { arcs, dispose: disposeArcs } = buildArcs("#ffffff");
     for (const a of arcs) group.add(a.mesh);
+
+    const applyColors = () => {
+      const { accent, line } = themeColors();
+      graticuleMat.color.set(line);
+      nodesMat.color.set(accent);
+      for (const a of arcs) {
+        if ((a.mesh.material as THREE.MeshBasicMaterial).color.getStyle() === ARC_TEAL) continue;
+        (a.mesh.material as THREE.MeshBasicMaterial).color.set(accent);
+      }
+    };
+    applyColors();
+
+    const themeObserver = new MutationObserver(applyColors);
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setClearColor(0x000000, 0);
@@ -218,6 +250,7 @@ export default function PensionGlobe() {
       cancelAnimationFrame(raf);
       ro.disconnect();
       io.disconnect();
+      themeObserver.disconnect();
       disposeArcs();
       graticule.geometry.dispose();
       (graticule.material as THREE.Material).dispose();
