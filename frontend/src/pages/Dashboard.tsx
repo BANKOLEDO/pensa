@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [agentActive, setAgentActive] = useState(false);
   const [agentStep, setAgentStep] = useState(0);
   const [tourOpen, setTourOpen] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<UserProfile>(() => loadProfile());
   const [editingProfile, setEditingProfile] = useState(false);
   const profileRef = useRef(userProfile);
@@ -219,6 +220,34 @@ export default function Dashboard() {
     } catch {
       /* ignore storage errors */
     }
+  };
+
+  // Lock page scroll while the mobile sidebar drawer is open.
+  useEffect(() => {
+    document.body.style.overflow = sideOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sideOpen]);
+
+  // Close the drawer automatically when crossing to desktop, or pressing Escape.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1025px)");
+    const onDesktop = () => setSideOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSideOpen(false);
+    };
+    mq.addEventListener("change", onDesktop);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      mq.removeEventListener("change", onDesktop);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, []);
+
+  const selectTab = (k: TabKey) => {
+    setTab(k);
+    setSideOpen(false);
   };
 
   const handleAllocation = async () => {
@@ -938,6 +967,15 @@ export default function Dashboard() {
           </Link>
           <div className="nav-cta" style={{ gap: 6 }}>
             <button
+              className="dash-burger theme-toggle"
+              onClick={() => setSideOpen((o) => !o)}
+              aria-label="Toggle sidebar"
+              aria-expanded={sideOpen}
+              title="Menu"
+            >
+              <Icon name={sideOpen ? "x" : "menu"} size={16} />
+            </button>
+            <button
               className="theme-toggle"
               onClick={toggleTheme}
               aria-label="Toggle theme"
@@ -961,15 +999,27 @@ export default function Dashboard() {
       {!wallet ? (
         <Navigate to="/app/onboard" replace />
       ) : (
+        <>
+        <div className={`dash-scrim ${sideOpen ? "open" : ""}`} onClick={() => setSideOpen(false)} aria-hidden="true" />
         <div className="dash-shell">
           {/* sidebar */}
-          <aside className="dash-side">
-            {SIDE_NAV.map((n) => (
-              <button key={n.key} className={`ns-rail ${n.key === tab ? "active" : ""}`} onClick={() => setTab(n.key)}>
-                <Icon name={n.icon} size={17} />
-                {n.label}
+          <aside className={`dash-side ${sideOpen ? "open" : ""}`}>
+            <div className="dash-side-head">
+              <Link to="/" onClick={() => setSideOpen(false)} aria-label="PENSA home">
+                <Logo />
+              </Link>
+              <button className="theme-toggle mobile-close" onClick={() => setSideOpen(false)} aria-label="Close menu">
+                <Icon name="x" size={16} />
               </button>
-            ))}
+            </div>
+            <div className="dash-side-nav">
+              {SIDE_NAV.map((n) => (
+                <button key={n.key} className={`ns-rail ${n.key === tab ? "active" : ""}`} onClick={() => selectTab(n.key)}>
+                  <Icon name={n.icon} size={17} />
+                  {n.label}
+                </button>
+              ))}
+            </div>
             <div className="ns-route" style={{ marginTop: 20, paddingLeft: 12 }}>
               <p className="mono" style={{ fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--fg-400)" }}>Control plane</p>
               <p className="text-xs" style={{ marginTop: 4, color: "var(--fg-400)" }}>
@@ -977,7 +1027,7 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="border-t" style={{ marginTop: "auto", paddingTop: 12 }}>
-              <Link to="/" className="ns-rail">
+              <Link to="/" className="ns-rail" onClick={() => setSideOpen(false)}>
                 <Icon name="logout" size={17} />
                 Back to site
               </Link>
@@ -1005,6 +1055,7 @@ export default function Dashboard() {
             )}
           </main>
         </div>
+        </>
       )}
 
       {toast && (

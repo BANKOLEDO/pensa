@@ -55,6 +55,14 @@ export default function Header() {
     return () => observer.disconnect();
   }, []);
 
+  // Auto-close the mobile drawer when crossing to a screen where it's hidden.
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const onDesktop = () => setOpen(false);
+    mq.addEventListener("change", onDesktop);
+    return () => mq.removeEventListener("change", onDesktop);
+  }, []);
+
   const scrollTo = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     const el = document.getElementById(id);
@@ -78,12 +86,10 @@ export default function Header() {
           gap: 16,
           height: 52,
           paddingInline: "14px 16px",
-          border: "1px solid var(--border-200)",
           borderRadius: 14,
-          background: "color-mix(in srgb, var(--bg-100) 86%, transparent)",
+          background: scrolled ? "var(--bg-100)" : "color-mix(in srgb, var(--bg-100) 92%, transparent)",
           backdropFilter: "blur(12px)",
-          boxShadow: scrolled ? "0 10px 30px rgba(0,0,0,0.28)" : "0 4px 14px rgba(0,0,0,0.12)",
-          transition: "box-shadow 180ms ease",
+          transition: "background 180ms ease",
         }}
       >
         <div className="flex flex-none items-center gap-7">
@@ -138,21 +144,41 @@ export default function Header() {
 
       {/* mobile drawer */}
       {open && (
-        <div className="lg:hidden ns-dotgrid" style={{ maxWidth: 1360, marginInline: "auto", marginTop: 8, border: "1px solid var(--border-200)", borderRadius: 14, background: "var(--bg-100)", overflow: "hidden" }}>
-          <div className="px-4 py-2">
-            {LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={`#${l.href.slice(1)}`}
-                onClick={scrollTo(l.href.slice(1))}
-                className="block py-3"
-                style={{ color: "var(--fg-200)", borderBottom: "1px solid var(--border-100)" }}
-              >
-                {l.label}
-              </a>
-            ))}
+        <>
+          <div
+            className="lg:hidden"
+            style={{ position: "fixed", inset: 0, zIndex: 49 }}
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="lg:hidden ns-dotgrid"
+            style={{
+              maxWidth: 1360,
+              marginInline: "auto",
+              marginTop: 8,
+              borderRadius: 14,
+              background: "var(--bg-100)",
+              overflow: "hidden",
+              position: "relative",
+              zIndex: 50,
+              boxShadow: "0 16px 48px rgba(0,0,0,0.3)",
+            }}
+          >
+            <div className="px-4 py-2">
+              {LINKS.map((l) => (
+                <a
+                  key={l.href}
+                  href={`#${l.href.slice(1)}`}
+                  onClick={scrollTo(l.href.slice(1))}
+                  className="block py-3"
+                  style={{ color: "var(--fg-200)", borderBottom: "1px solid var(--border-100)" }}
+                >
+                  {l.label}
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </header>
   );
